@@ -28,10 +28,18 @@ Verified on September 14, 2026:
 - [x] The local `origin` uses `https://github.com/gufvr/stepscript.git` for fetch
   and push.
 - [x] Reading `HEAD` from the new remote succeeds without pushing.
-- [ ] The target privacy policy currently returns `404`; Pages configuration
-  and the manual workflow run are intentionally deferred.
-- [ ] Chrome Web Store URLs remain pending until the privacy policy returns a
-  successful HTTPS response.
+- [x] GitHub Pages uses GitHub Actions as its source with HTTPS enforced.
+- [x] Manual workflow run 1 completed successfully for commit `c535605`:
+  `https://github.com/gufvr/stepscript/actions/runs/34919948625`.
+- [x] The target privacy policy, stylesheet, and icon return `200` without
+  authentication, and HTTP redirects to HTTPS.
+- [x] The published policy, stylesheet, and icon match their local sources by
+  SHA-256.
+- [x] The policy title, canonical URL, stylesheet, icon, and support link are
+  present and correct.
+- [x] The legacy privacy URL returns `404` and is not an active destination.
+- [ ] Chrome Web Store URLs are ready for a later manual update and have not
+  been submitted in this release.
 
 ## Manual cutover
 
