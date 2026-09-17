@@ -84,13 +84,63 @@ the package before future captures when product code changes.
 - [x] Listing PNG bytes are absent from `dist` and `stepscript-extension.zip`.
 - [ ] Author approves the final visual set before dashboard entry.
 - [ ] Preview screenshots at 640x400 and the tile at 220x140 to check store-size readability.
-- [ ] Confirm required fields, including video, in the current Dashboard before upload.
+- [ ] After creating the unpublished Dashboard draft, confirm required fields, including video, before submission.
 
 To review, open the four PNGs at native size, then at half size. Check visible
 labels, spelling, fictional values, selectors and code. Compare the screenshots
 with the unpacked extension; the wide direct application surface is documented
 above. Confirm the existing icon works on light and dark backgrounds in a later
 icon review; this release does not change it.
+
+## Store 1D.3B final asset review
+
+Reviewed on September 16, 2026 against the current source manifest, icon, built
+extension and the hashes in `capture-evidence.json`. The asset set is **approved
+for author review**, subject to the dashboard video decision below. This is not a
+publication approval or a claim that Chrome Web Store review has approved it.
+
+| Asset | Native-size review | Reduced-size review | Decision |
+| --- | --- | --- | --- |
+| `01-recording.png` | Brand, recording state, count, privacy disclosure and main actions are clear. The fictional `Alex Demo` value and selector remain visible. | Status, count and main actions remain clear. Fine selector/action detail is secondary at this scale. | Approved |
+| `02-steps-and-checks.png` | The visibility and exact-text assertions, selectors, edit/reorder/delete controls and feedback are legible. | Assertion descriptions and controls remain distinguishable; selector detail benefits from opening at native size. | Approved |
+| `03-generated-code.png` | The Playwright title, export summary, visible generated code and copy/download result are clear. | The code block communicates the export surface; its individual source lines require native-size inspection. | Approved |
+| `small-promo-440x280.png` | StepScript name, icon and capture-to-steps-to-code sequence have strong contrast on the dark graphite background. | The name and three symbols remain recognizable at 220x140. | Approved |
+
+The wide direct-extension surface is faithful to the application and disclosed in
+this handoff. A future browser-window or docked-panel capture could be considered
+as a promotional preference, but it is not required for this asset set. No
+recapture, visual correction or product change is required from this review.
+
+Fidelity checks pass: capture evidence ties the screenshots to the current
+manifest and unchanged icon hashes; the capture script uses the real extension,
+real recorder, real assertion picker, real edit/reorder controls and real code
+previews/downloads. The fixture supplies only `Alex Demo` and a synthetic
+Portuguese confirmation message. The visible footer author credit is existing
+product attribution, not test data. No account, email address, address, payment
+data, credential, token or external-page content appears in the reviewed set.
+
+### Dashboard video requirement
+
+**Decision: pending owner confirmation.** The Chrome Web Store Developer
+Dashboard is an authenticated external surface and no authenticated Dashboard
+browser context is available to this review. No Dashboard field was opened,
+changed or saved. The official sources still conflict: the dedicated image guide
+says the icon, small promo image and one screenshot are mandatory, while the
+dashboard listing guide includes a YouTube video in its required-assets wording.
+
+After creating the unpublished item draft, and before submission, the owner should
+open **Store listing** and inspect the Graphic assets section without uploading
+additional assets or saving listing fields. Record one of these exact outcomes here:
+
+| Dashboard observation | Required follow-up |
+| --- | --- |
+| Video field has no required marker and the form accepts the three screenshots, icon and small tile as complete | Mark video as not required and keep this asset set approved. |
+| Video field has a required marker or blocks form completion without a YouTube URL | Plan a separate video-only release before submission. |
+| Dashboard wording or validation is unclear | Capture the field label or validation text for review; do not guess or submit. |
+
+The owner review and post-draft Dashboard observation are the only remaining 1D.3B
+gates. Creating the draft is a separate external release and does not publish the
+extension.
 
 ## Official requirements and remaining handoff
 
