@@ -14,7 +14,7 @@ describe('visible StepScript branding', () => {
     expect(manifest).toMatchObject({
       name: 'StepScript',
       description:
-        'Grave fluxos no navegador e transforme-os em testes automatizados.',
+        'Record browser flows and generate readable Playwright and Cypress tests locally.',
       version: '0.5.0',
       minimum_chrome_version: '116',
       action: { default_title: 'Abrir StepScript' },

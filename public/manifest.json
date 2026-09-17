@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "StepScript",
-  "description": "Grave fluxos no navegador e transforme-os em testes automatizados.",
+  "description": "Record browser flows and generate readable Playwright and Cypress tests locally.",
   "version": "0.5.0",
   "minimum_chrome_version": "116",
   "permissions": ["activeTab", "scripting", "sidePanel", "storage", "webNavigation"],
