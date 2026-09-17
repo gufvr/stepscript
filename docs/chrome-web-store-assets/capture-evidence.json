@@ -1,0 +1,31 @@
+{
+  "capturedAt": "2026-09-17T00:36:37.814Z",
+  "browser": "151.0.7922.34",
+  "extensionVersion": "0.5.0",
+  "fixtureUrl": "http://127.0.0.1:4176/fixture.html",
+  "surface": "Unmodified extension index.html rendered directly, not the native docked browser panel",
+  "viewport": {
+    "width": 1280,
+    "height": 800,
+    "deviceScaleFactor": 1
+  },
+  "isolatedPermission": "Only copied E2E manifest grants http://127.0.0.1/*; production manifest unchanged",
+  "fictionalFormValue": "Alex Demo",
+  "sourceManifestSha256": "9e7d707fef6901a8ddce3f35cc134b0edb106114a2810ceb19a3ad0c8f35aa91",
+  "iconSha256": "cb7c521d1665ab697723c65acbc94e1162c79a3a87e06c38c79937e344bf1e28",
+  "zipSha256": "2677a733b6b7188ef36b2d8e808fc58ce6157b521244543ef58d61b0c92623e9",
+  "checks": {
+    "pngDimensions": true,
+    "downloadsMatchPreviews": [
+      "Playwright",
+      "Cypress"
+    ],
+    "listingPngsAbsentFromDistribution": true
+  },
+  "assets": {
+    "01-recording.png": "7096b5ee518a5afdf24a8385b29e565a79defb615aaae351e859a9f9c9f42adc",
+    "02-steps-and-checks.png": "880864f141f9d0f1c981b52b8c22419d83e95e9f7b28d349c5046381f2e2e155",
+    "03-generated-code.png": "19c4dc7a61e1c5602078f291b2c23555d4bc4860ec8902cfd1c93511502355ac",
+    "small-promo-440x280.png": "b90b1dec393de277964db9e3380f6a5872eff5a70a0fb5fd46ffb26d060b310b"
+  }
+}

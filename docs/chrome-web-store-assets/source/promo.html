@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<meta charset="UTF-8">
+<title>StepScript promotional tile</title>
+<style>
+  @font-face { font-family: Poppins; src: url('/font.woff2'); font-weight: 600; }
+  * { box-sizing: border-box; }
+  body { width: 440px; height: 280px; margin: 0; overflow: hidden; background: #111629; color: white; font-family: Poppins, sans-serif; }
+  main { position: relative; height: 100%; padding: 30px; background: radial-gradient(ellipse at 85% 0%, #6331a777, transparent 65%); }
+  header { display: flex; align-items: center; gap: 14px; }
+  img { width: 56px; height: 56px; }
+  h1 { margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -1px; }
+  .flow { display: flex; align-items: center; gap: 12px; margin-top: 32px; }
+  .card { width: 100px; height: 108px; border-radius: 14px; border: 1px solid #aa79ff66; background: #26203e; display: grid; place-items: center; box-shadow: 0 8px 20px #0003; }
+  .arrow { width: 20px; height: 2px; background: #b390f2; position: relative; }
+  .arrow::after { content: ''; position: absolute; right: 0; top: -3px; width: 6px; height: 6px; border-top: 2px solid #b390f2; border-right: 2px solid #b390f2; transform: rotate(45deg); }
+  svg { width: 64px; height: 64px; stroke: #d1b6ff; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .code { color: #d1b6ff; font: 600 38px monospace; }
+</style>
+<main>
+  <header><img src="/icon.png" alt=""><h1>StepScript</h1></header>
+  <div class="flow" aria-label="Capture interactions, organize steps, generate code">
+    <div class="card"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="7" y="8" width="50" height="38" rx="5"/><path d="M7 18h50M14 13h1m5 0h1M27 26l1 25 6-7 8 10 6-5-8-9 10-2z"/></svg></div>
+    <span class="arrow"></span>
+    <div class="card"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M9 16l4 4 7-8M27 17h28M9 32l4 4 7-8M27 33h28M9 48l4 4 7-8M27 49h28"/></svg></div>
+    <span class="arrow"></span>
+    <div class="card"><span class="code">&lt;/&gt;</span></div>
+  </div>
+</main>
+</html>

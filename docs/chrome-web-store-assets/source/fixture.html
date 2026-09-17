@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="UTF-8">
+<title>StepScript — formulário de demonstração</title>
+<style>
+  body { margin: 0; padding: 48px; background: #f6f8fc; color: #10243b; font: 18px system-ui; }
+  main { max-width: 600px; padding: 32px; background: white; border-radius: 16px; }
+  label { display: block; margin: 24px 0; }
+  input { display: block; margin-top: 8px; padding: 12px; border: 1px solid #bcc8dc; border-radius: 8px; }
+  button { padding: 12px 24px; border: 0; border-radius: 8px; background: #7839ef; color: white; font: inherit; }
+</style>
+<main>
+  <h1>Cadastro de demonstração</h1>
+  <p>Use somente dados fictícios neste exemplo.</p>
+  <label>Nome de demonstração <input data-testid="demo-name" autocomplete="off"></label>
+  <button data-testid="demo-save" type="button">Salvar cadastro</button>
+  <p data-testid="demo-result" aria-live="polite">Pronto para começar</p>
+</main>
+<script>
+  document.querySelector('button').addEventListener('click', () => {
+    document.querySelector('[data-testid="demo-result"]').innerText = 'Cadastro de demonstração salvo';
+  });
+</script>
+</html>
