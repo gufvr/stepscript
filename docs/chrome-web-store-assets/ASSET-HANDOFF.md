@@ -10,7 +10,9 @@ the extension package. No dashboard changes or submission are performed here.
 | `01-recording.png` | PNG, 1280x800 | Real recording status, captured form interaction and selectors |
 | `02-steps-and-checks.png` | PNG, 1280x800 | Real visibility/text checks, step editing/reordering controls and feedback |
 | `03-generated-code.png` | PNG, 1280x800 | Real Playwright preview, copy/download controls and successful download feedback |
+| `store-icon-128x128.png` | PNG, 128x128 | Store-compatible RGB rendering of the existing extension icon on white |
 | `small-promo-440x280.png` | PNG, 440x280 | Brand artwork rendered from local HTML/CSS: capture, steps, code |
+| `marquee-promo-1400x560.png` | PNG, 1400x560 | Brand artwork rendered from local HTML/CSS: capture, steps, code |
 
 The screenshot source is the existing built extension's `index.html`, opened at
 its extension URL in isolated persistent Chromium. This is the same application
@@ -47,6 +49,12 @@ Only the StepScript name appears as text. The tile is promotional illustration,
 not a simulated extension screenshot. It is rendered directly to PNG without
 external fonts, assets, network services or image generation.
 
+`store-icon-128x128.png` is a non-destructive Store upload derivative of the
+existing transparent extension icon. `source/store-icon.html` composites it over
+solid white before browser rendering, producing RGB PNG without alpha. It does
+not replace the manifest icon. `source/marquee.html` is the matching 1400x560
+source for the marquee tile.
+
 ## Reproduction and evidence
 
 From the project root, with dependencies and Playwright Chromium already available:
@@ -75,7 +83,8 @@ the package before future captures when product code changes.
 ## Review checklist
 
 - [x] Three screenshots are genuine extension renders with no added borders or padding.
-- [x] Screenshots are PNG 1280x800; the tile is PNG 440x280.
+- [x] Store icon is PNG 128x128; screenshots are PNG 1280x800; promotional tiles are PNG 440x280 and 1400x560.
+- [x] All Store upload PNGs are 24-bit RGB without alpha.
 - [x] Existing icon and product source files are preserved.
 - [x] Screenshots contain fictional form data, not real personal test values.
 - [x] Portuguese UI, product name and current features match the listing disclosures.
@@ -148,8 +157,8 @@ The [dedicated image requirements](https://developer.chrome.com/docs/webstore/im
 require an icon, small promotional image and at least one screenshot; permit one
 to five screenshots at 1280x800 or 640x400, prefer the larger size, and require
 square corners without padding. A marquee image is optional at 1400x560. This
-release supplies three screenshots and a small tile; the existing packaged
-128x128 icon is reused.
+release supplies three screenshots, a small tile, a marquee tile and a
+Store-compatible 128x128 derivative of the existing packaged icon.
 
 The [dashboard listing guide](https://developer.chrome.com/docs/webstore/cws-dashboard-listing)
 uses wording that also treats video as required, while the dedicated image page

@@ -15,6 +15,8 @@ const fixtureUrl = `${origin}/fixture.html`;
 const routes = new Map([
   ['/fixture.html', ['docs/chrome-web-store-assets/source/fixture.html', 'text/html; charset=utf-8']],
   ['/promo.html', ['docs/chrome-web-store-assets/source/promo.html', 'text/html; charset=utf-8']],
+  ['/marquee.html', ['docs/chrome-web-store-assets/source/marquee.html', 'text/html; charset=utf-8']],
+  ['/store-icon.html', ['docs/chrome-web-store-assets/source/store-icon.html', 'text/html; charset=utf-8']],
   ['/icon.png', ['public/icons/icon-128.png', 'image/png']],
   ['/font.woff2', ['node_modules/@fontsource/poppins/files/poppins-latin-600-normal.woff2', 'font/woff2']],
 ]);
@@ -122,14 +124,29 @@ try {
     await Promise.all([...document.images].map((image) => image.decode()));
   });
   await tile.screenshot({ path: resolve(output, 'small-promo-440x280.png') });
+  const marquee = await context.newPage();
+  await marquee.setViewportSize({ width: 1400, height: 560 });
+  await marquee.goto(`${origin}/marquee.html`);
+  await marquee.evaluate(async () => {
+    await document.fonts.ready;
+    await Promise.all([...document.images].map((image) => image.decode()));
+  });
+  await marquee.screenshot({ path: resolve(output, 'marquee-promo-1400x560.png') });
+  const storeIcon = await context.newPage();
+  await storeIcon.setViewportSize({ width: 128, height: 128 });
+  await storeIcon.goto(`${origin}/store-icon.html`);
+  await storeIcon.locator('img').evaluate((image) => image.decode());
+  await storeIcon.screenshot({ path: resolve(output, 'store-icon-128x128.png') });
   for (const [name, width, height] of [
     ['01-recording.png', 1280, 800], ['02-steps-and-checks.png', 1280, 800],
-    ['03-generated-code.png', 1280, 800], ['small-promo-440x280.png', 440, 280],
+    ['03-generated-code.png', 1280, 800], ['store-icon-128x128.png', 128, 128],
+    ['small-promo-440x280.png', 440, 280], ['marquee-promo-1400x560.png', 1400, 560],
   ]) {
     const png = await readFile(resolve(output, name));
     assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
     assert.equal(png.readUInt32BE(16), width);
     assert.equal(png.readUInt32BE(20), height);
+    assert.equal(png[25], 2, `${name} must be RGB PNG without alpha`);
   }
   const entries = readZipEntries(await readFile(resolve(root, 'stepscript-extension.zip')));
   validateExtensionPackageEntries(entries);
@@ -138,7 +155,7 @@ try {
   // Byte-level checks also catch unexpected renamed copies in distribution.
   const { readdir } = await import('node:fs/promises');
   const distFiles = await readdir(resolve(root, 'dist'), { recursive: true });
-  for (const name of ['01-recording.png', '02-steps-and-checks.png', '03-generated-code.png', 'small-promo-440x280.png']) {
+  for (const name of ['01-recording.png', '02-steps-and-checks.png', '03-generated-code.png', 'store-icon-128x128.png', 'small-promo-440x280.png', 'marquee-promo-1400x560.png']) {
     const bytes = await readFile(resolve(output, name));
     for (const [entryName, content] of entries) {
       assert.ok(!content.equals(bytes), `Listing asset included in ZIP: ${entryName}`);
@@ -159,14 +176,14 @@ try {
     sourceManifestSha256: hash(await readFile(resolve(root, 'public/manifest.json'))),
     iconSha256: hash(await readFile(resolve(root, 'public/icons/icon-128.png'))),
     zipSha256: hash(await readFile(resolve(root, 'stepscript-extension.zip'))),
-    checks: { pngDimensions: true, downloadsMatchPreviews: ['Playwright', 'Cypress'], listingPngsAbsentFromDistribution: true },
+    checks: { pngDimensions: true, pngsAre24BitRgbWithoutAlpha: true, downloadsMatchPreviews: ['Playwright', 'Cypress'], listingPngsAbsentFromDistribution: true },
     assets: {},
   };
-  for (const name of ['01-recording.png', '02-steps-and-checks.png', '03-generated-code.png', 'small-promo-440x280.png']) {
+  for (const name of ['01-recording.png', '02-steps-and-checks.png', '03-generated-code.png', 'store-icon-128x128.png', 'small-promo-440x280.png', 'marquee-promo-1400x560.png']) {
     evidence.assets[name] = hash(await readFile(resolve(output, name)));
   }
   await writeFile(resolve(output, 'capture-evidence.json'), `${JSON.stringify(evidence, null, 2)}\n`);
-  console.log('Captured 3 real extension screenshots and promotional tile; PNG dimensions, generated downloads and distribution exclusion verified.');
+  console.log('Captured Store-compatible icon, 3 extension screenshots, small tile and marquee; RGB dimensions, generated downloads and distribution exclusion verified.');
 } finally {
   await context?.close();
   await new Promise((accept) => server.close(accept));

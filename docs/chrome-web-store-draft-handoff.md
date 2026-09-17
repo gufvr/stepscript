@@ -149,11 +149,12 @@ address, effective date September 10, 2026, support link and Limited Use stateme
 
 | Dashboard target | Existing file | Dimensions |
 | --- | --- | --- |
-| Store icon | `public/icons/icon-128.png` | PNG 128x128 |
+| Store icon | `docs/chrome-web-store-assets/store-icon-128x128.png` | PNG 128x128 |
 | Screenshot 1 | `docs/chrome-web-store-assets/01-recording.png` | PNG 1280x800 |
 | Screenshot 2 | `docs/chrome-web-store-assets/02-steps-and-checks.png` | PNG 1280x800 |
 | Screenshot 3 | `docs/chrome-web-store-assets/03-generated-code.png` | PNG 1280x800 |
 | Small promotional image | `docs/chrome-web-store-assets/small-promo-440x280.png` | PNG 440x280 |
+| Marquee promotional image | `docs/chrome-web-store-assets/marquee-promo-1400x560.png` | PNG 1400x560 |
 
 Use the existing files without resizing or recapturing. Screenshots show the real
 direct-extension interface in Portuguese; the tile is promotional illustration.
