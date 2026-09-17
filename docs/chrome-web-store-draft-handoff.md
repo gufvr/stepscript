@@ -10,19 +10,23 @@ owner in the existing developer account; no credentials are shared with the agen
 
 | External record | Value |
 | --- | --- |
-| Owner confirmation | Pending |
-| Draft item ID | Not created |
-| Draft dashboard URL | Not available |
-| Dashboard status | Not observed |
-| Observed required fields | Pending first upload |
-| Video requirement | Pending inspection of the actual draft form |
-| Listing save result | Not performed |
+| Owner confirmation | Received on September 16, 2026 |
+| Draft item ID | `kjapjhhghfigfilijhbdlchgpiojidhd` |
+| Draft dashboard URL | Available only in the authenticated owner session; not recorded here |
+| Dashboard status | Rascunho / Draft |
+| Package version observed | 0.5.0 |
+| Package type observed | Extension |
+| Observed permissions | activeTab, scripting, sidePanel, storage, webNavigation |
+| Publication status observed | Not published |
+| Video requirement | Optional: the Dashboard field was shown without a required marker |
+| Listing save result | Draft can proceed to submission; no review was requested |
 | Submit for review | Not authorized; not performed |
 | Publication | Not authorized; not performed |
 
-Do not mark any pending observation as verified until the owner reports its
-actual result. Record the item ID and dashboard URL here after creation; do not
-record cookies, credentials, access tokens or private account settings.
+The owner supplied a Dashboard screenshot of the Package page showing the values
+above. The item code is the public Chrome extension identifier assigned to this
+draft, not a credential. Do not record cookies, credentials, access tokens or
+private account settings.
 
 ## Audited upload package
 
@@ -170,10 +174,10 @@ Owner confirmation for the draft should also confirm use of this reviewed asset 
 - [x] Public policy, homepage and support return HTTP 200.
 - [x] Published policy text matches the local source.
 - [x] Exact canonical copy sources and field values prepared.
-- [ ] Explicit owner confirmation received at the external-action gate.
-- [ ] Draft ID, dashboard URL and status recorded from the actual item.
-- [ ] Approved listing, privacy fields, test instructions and assets saved/reopened.
-- [ ] Actual required fields and video observation recorded.
+- [x] Explicit owner confirmation received at the external-action gate.
+- [x] Draft ID and status recorded from the actual item.
+- [ ] Approved listing, privacy fields, test instructions and assets saved/reopened by the owner.
+- [x] Actual video observation recorded: the field is optional.
 - [ ] Any ambiguous privacy fields or missing mandatory values resolved separately.
 - [ ] Confirm no review request or publication action occurred.
 
