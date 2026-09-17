@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/qaquest.png" width="150" alt="StepScript logo">
+  <img src="assets/stepscript-logo.png" width="150" alt="StepScript logo">
 </p>
 
 <h1 align="center">StepScript</h1>

@@ -1,0 +1,52 @@
+[
+  {
+    "path": "docs/rebrand-external-cutover.md",
+    "line": "This runbook covers the external rename from `gufvr/flowsnap` to",
+    "reason": "Historical rename record."
+  },
+  {
+    "path": "docs/rebrand-external-cutover.md",
+    "line": "- Local remote: `https://github.com/gufvr/flowsnap.git`",
+    "reason": "Pre-cutover baseline."
+  },
+  {
+    "path": "docs/rebrand-external-cutover.md",
+    "line": "- Public repository: `https://github.com/gufvr/flowsnap`",
+    "reason": "Pre-cutover baseline."
+  },
+  {
+    "path": "docs/rebrand-external-cutover.md",
+    "line": "2. In GitHub, open the repository settings and rename `flowsnap` to",
+    "reason": "Historical manual cutover procedure."
+  },
+  {
+    "path": "docs/rebrand-external-cutover.md",
+    "line": "git remote set-url origin https://github.com/gufvr/flowsnap.git",
+    "reason": "Explicit rollback command."
+  },
+  {
+    "path": "scripts/prepare-privacy-site.mjs",
+    "line": "'https://gufvr.github.io/flowsnap/privacy.html';",
+    "reason": "Legacy URL rejected by the privacy validator."
+  },
+  {
+    "path": "scripts/prepare-privacy-site.mjs",
+    "line": "if (html.includes('FlowSnap')) {",
+    "reason": "Rejects legacy branding in the policy."
+  },
+  {
+    "path": "scripts/prepare-privacy-site.mjs",
+    "line": "if (markdown.includes('FlowSnap')) {",
+    "reason": "Rejects legacy branding in store privacy documentation."
+  },
+  {
+    "path": "scripts/prepare-privacy-site.test.mjs",
+    "line": "policy.replace('StepScript is a Chrome extension', 'FlowSnap is a Chrome extension'),",
+    "reason": "Negative policy regression test."
+  },
+  {
+    "path": "scripts/prepare-privacy-site.test.mjs",
+    "line": "dashboard.replace('StepScript', 'FlowSnap'),",
+    "reason": "Negative store privacy documentation regression test."
+  }
+]

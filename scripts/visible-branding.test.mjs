@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { extname, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const projectRoot = resolve(import.meta.dirname, '..');
@@ -44,8 +45,47 @@ describe('visible StepScript branding', () => {
     expect(readme).toContain('## Core features');
     expect(readme).toContain('## Load the unpacked extension');
     expect(readme).toContain('`stepscript-extension.zip`');
-    expect(readme).not.toMatch(/flowsnap/i);
+    expect(readme).not.toMatch(/flow[s]nap/i);
+    expect(readme).toContain('src="assets/stepscript-logo.png"');
+    expect(existsSync(resolve(projectRoot, 'assets/stepscript-logo.png'))).toBe(true);
     expect(packageScript).toContain("'stepscript-extension.zip'");
-    expect(packageScript).not.toMatch(/flowsnap-extension\.zip/i);
+    expect(packageScript).not.toMatch(/flow[s]nap-extension\.zip/i);
+  });
+
+  it('rejects legacy branding outside the explicit line allowlist', () => {
+    const allowlistPath = 'scripts/branding-legacy-allowlist.json';
+    const allowlist = JSON.parse(
+      readFileSync(resolve(projectRoot, allowlistPath), 'utf8'),
+    );
+    const files = execFileSync(
+      'git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+      { cwd: projectRoot, encoding: 'utf8' },
+    ).split('\0').filter(Boolean);
+    const textExtensions = new Set([
+      '.ts', '.tsx', '.js', '.mjs', '.json', '.html', '.css', '.svg', '.md',
+      '.yml', '.yaml', '.txt',
+    ]);
+    const violations = [];
+    const remaining = new Map(allowlist.map(({ path, line, reason }) => {
+      expect(reason.trim()).not.toBe('');
+      expect(line).toMatch(/flow[s]nap/i);
+      expect(files).toContain(path);
+      return [`${path}:${line}`, 1];
+    }));
+    expect(remaining.size).toBe(allowlist.length);
+
+    for (const path of files) {
+      if (/flow[s]nap/i.test(path)) violations.push(path);
+      if (path === allowlistPath || !textExtensions.has(extname(path))) continue;
+      readFileSync(resolve(projectRoot, path), 'utf8').split(/\r?\n/)
+        .forEach((line, index) => {
+          if (!/flow[s]nap/i.test(line)) return;
+          const key = `${path}:${line.trim()}`;
+          if (remaining.get(key) === 1) remaining.set(key, 0);
+          else violations.push(`${path}:${index + 1}: ${line.trim()}`);
+        });
+    }
+    expect(violations).toEqual([]);
+    expect([...remaining].filter(([, count]) => count !== 0)).toEqual([]);
   });
 });
