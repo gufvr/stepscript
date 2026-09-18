@@ -78,6 +78,11 @@ export function createChromeExtensionHarness(
 ) {
   const tabId = options.tabId ?? 21
   const url = options.url ?? 'https://qapracticehub.com/#forms'
+  let activeTab = { id: tabId, windowId: 1, url }
+  let actionListener: ((tab: chrome.tabs.Tab) => void) | undefined
+  let activatedListener: ((info: { tabId: number; windowId: number }) => void) | undefined
+  let removedListener: ((tabId: number) => void) | undefined
+  let updatedListener: ((tabId: number, changes: { url: string }) => void) | undefined
   const localValues = clone(options.local ?? {})
   const sessionValues = {
     activeTabContext: {
@@ -168,7 +173,7 @@ export function createChromeExtensionHarness(
 
   const chromeApi = {
     action: {
-      onClicked: { addListener: vi.fn() },
+      onClicked: { addListener: vi.fn((listener: typeof actionListener) => { actionListener = listener }) },
     },
     permissions: {
       request: permissionRequest,
@@ -218,6 +223,10 @@ export function createChromeExtensionHarness(
     },
     tabs: {
       sendMessage: tabsSendMessage,
+      query: vi.fn(async () => [clone(activeTab)]),
+      onActivated: { addListener: vi.fn((listener: typeof activatedListener) => { activatedListener = listener }) },
+      onRemoved: { addListener: vi.fn((listener: typeof removedListener) => { removedListener = listener }) },
+      onUpdated: { addListener: vi.fn((listener: typeof updatedListener) => { updatedListener = listener }) },
     },
     webNavigation: {
       onCommitted: {
@@ -271,6 +280,21 @@ export function createChromeExtensionHarness(
   }
 
   return {
+    openFromAction() {
+      actionListener?.(activeTab as chrome.tabs.Tab)
+    },
+    activateTab(nextTabId: number, nextUrl: string, windowId = 1) {
+      activeTab = { id: nextTabId, windowId, url: nextUrl }
+      activatedListener?.({ tabId: nextTabId, windowId })
+    },
+    closeActiveTab() {
+      removedListener?.(activeTab.id)
+      activeTab = { id: -1, windowId: 1, url: '' }
+    },
+    navigateActiveTab(nextUrl: string) {
+      activeTab = { ...activeTab, url: nextUrl }
+      updatedListener?.(activeTab.id, { url: nextUrl })
+    },
     clipboardWrite,
     chrome: chromeApi,
     connectRecorder(controller: RecorderController, targetTabId = tabId) {
@@ -290,6 +314,9 @@ export function createChromeExtensionHarness(
       destinationUrl: string,
       details: Partial<Omit<WebNavigationDetails, 'url'>> = {},
     ) {
+      if ((details.tabId ?? tabId) === activeTab.id && (details.frameId ?? 0) === 0) {
+        activeTab = { ...activeTab, url: destinationUrl }
+      }
       committedListener?.({
         tabId,
         frameId: 0,

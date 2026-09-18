@@ -52,6 +52,12 @@ test('records across a full navigation and resumes the real recorder', async ({
 }) => {
   await page.goto(startUrl);
 
+  const sidePanel = await context.newPage();
+  await sidePanel.goto(`chrome-extension://${extensionId}/index.html`);
+  // The direct panel page is a test tab, unlike the native docked Side Panel.
+  // Restore focus to the fixture before providing the action-context bridge.
+  await page.bringToFront();
+
   await serviceWorker.evaluate(async (targetUrl) => {
     await chrome.storage.local.clear();
     await chrome.storage.session.clear();
@@ -75,9 +81,6 @@ test('records across a full navigation and resumes the real recorder', async ({
       },
     });
   }, startUrl);
-
-  const sidePanel = await context.newPage();
-  await sidePanel.goto(`chrome-extension://${extensionId}/index.html`);
 
   await expect(sidePanel.getByText('Status: Parado')).toBeVisible();
   await expect(sidePanel.getByText('0 passos capturados')).toBeVisible();

@@ -9,6 +9,7 @@ interface ExtensionFixtures {
   context: BrowserContext;
   extensionId: string;
   serviceWorker: Worker;
+  pregrantFixtureOrigin: boolean;
 }
 
 const extensionPath = resolve(
@@ -21,13 +22,15 @@ const extensionPath = resolve(
 );
 
 export const test = base.extend<ExtensionFixtures>({
-  context: async ({ playwright }, provide) => {
+  pregrantFixtureOrigin: [true, { option: true }],
+  context: async ({ playwright, pregrantFixtureOrigin }, provide) => {
+    const path = pregrantFixtureOrigin ? extensionPath : resolve(extensionPath, '..', 'optional-unpacked');
     const context = await playwright.chromium.launchPersistentContext('', {
       channel: 'chromium',
       headless: true,
       args: [
-        `--disable-extensions-except=${extensionPath}`,
-        `--load-extension=${extensionPath}`,
+        `--disable-extensions-except=${path}`,
+        `--load-extension=${path}`,
       ],
       timeout: 15_000,
     });

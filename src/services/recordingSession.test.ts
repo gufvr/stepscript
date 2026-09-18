@@ -109,4 +109,14 @@ describe('recordingSession', () => {
     );
     expect(requestPermission).not.toHaveBeenCalled();
   });
+
+  it('does not start when the tab changes while permission is requested', async () => {
+    provideActiveTab({ tabId: 42, windowId: 2, url: 'https://example.com/form' });
+    requestPermission.mockImplementation(async () => {
+      provideActiveTab();
+      return true;
+    });
+    await expect(startRecordingSession()).rejects.toThrow('Reabra o StepScript pelo ícone');
+    expect(sendMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'START_RECORDING' }));
+  });
 });

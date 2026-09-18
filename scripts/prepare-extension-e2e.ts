@@ -29,3 +29,10 @@ await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 console.log(
   `Prepared the StepScript extension E2E build at ${extensionDirectory}.`,
 );
+
+// Keep a second, unmodified manifest to exercise stale-context rejection without
+// any pre-granted fixture origin. The successful legacy flow retains its fixture
+// grant, because Chromium's native extension consent dialog is not automated.
+const optionalExtensionDirectory = resolve(projectRoot, 'test-results', 'extension-e2e', 'optional-unpacked');
+await mkdir(optionalExtensionDirectory, { recursive: true });
+await cp(buildDirectory, optionalExtensionDirectory, { recursive: true });

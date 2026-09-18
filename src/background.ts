@@ -17,8 +17,12 @@ import { validateStepDescriptionText } from './shared/descriptions/descriptionOv
 import { getRecordedStepReference } from './shared/recordedStepIdentity';
 import {
   captureActiveTabContext,
-  getActiveTabContext,
   persistActiveTabContext,
+  invalidateContextForActivation,
+  invalidateContextForClosedTab,
+  updateActiveTabContextUrl,
+  validateActiveTabContext,
+  STALE_TAB_CONTEXT_MESSAGE,
 } from './services/activeTabContext';
 import {
   createRecordedDocumentNavigation,
@@ -209,8 +213,22 @@ chrome.action.onClicked.addListener((tab) => {
 
   if (!context) return;
 
-  void chrome.sidePanel.open({ tabId: context.tabId }).catch(() => undefined);
+  // Start the session write first, but keep open() in the native action gesture.
+  // Context readers await the write before allowing recording to start.
   void persistActiveTabContext(context);
+  void chrome.sidePanel.open({ tabId: context.tabId }).catch(() => undefined);
+});
+
+chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
+  void invalidateContextForActivation(tabId, windowId).catch(() => undefined);
+});
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void invalidateContextForClosedTab(tabId).catch(() => undefined);
+});
+chrome.tabs.onUpdated.addListener((tabId, changes) => {
+  if (changes.url) {
+    void updateActiveTabContextUrl(tabId, changes.url).catch(() => undefined);
+  }
 });
 
 async function startRecording(
@@ -218,6 +236,10 @@ async function startRecording(
   origin: string,
   url: string,
 ): Promise<ExtensionResponse> {
+  const context = await validateActiveTabContext();
+  if (!context || context.tabId !== tabId || context.url !== url || new URL(context.url).origin !== origin) {
+    return { success: false, error: STALE_TAB_CONTEXT_MESSAGE };
+  }
   try {
     await chrome.scripting.executeScript({
       target: { tabId },
@@ -935,6 +957,9 @@ function recordDocumentReady(details: ReadyWebNavigationDetails) {
 }
 
 chrome.webNavigation.onCommitted.addListener((details) => {
+  if (details.frameId === 0) {
+    void updateActiveTabContextUrl(details.tabId, details.url).catch(() => undefined);
+  }
   recordCommittedDocumentNavigation(details);
 });
 
@@ -947,10 +972,16 @@ chrome.webNavigation.onCompleted.addListener((details) => {
 });
 
 chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
+  if (details.frameId === 0) {
+    void updateActiveTabContextUrl(details.tabId, details.url).catch(() => undefined);
+  }
   recordSameDocumentNavigation(details, 'history-api');
 });
 
 chrome.webNavigation.onReferenceFragmentUpdated.addListener((details) => {
+  if (details.frameId === 0) {
+    void updateActiveTabContextUrl(details.tabId, details.url).catch(() => undefined);
+  }
   recordSameDocumentNavigation(details, 'fragment');
 });
 
@@ -972,7 +1003,7 @@ chrome.runtime.onMessage.addListener(
       }
 
       if (message.type === 'GET_ACTIVE_TAB_CONTEXT') {
-        const activeTabContext = await getActiveTabContext();
+        const activeTabContext = await validateActiveTabContext();
         return { success: Boolean(activeTabContext), activeTabContext };
       }
 

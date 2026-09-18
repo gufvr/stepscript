@@ -1,5 +1,6 @@
 import type { ExtensionMessage, ExtensionResponse } from '../shared/messages';
 import type { RecordingState } from '../shared/recordingTypes';
+import { STALE_TAB_CONTEXT_MESSAGE } from './activeTabContext';
 
 function getPermissionPattern(url: string) {
   const parsedUrl = new URL(url);
@@ -18,7 +19,7 @@ async function getActiveTab() {
   const activeTab = response.activeTabContext;
 
   if (!activeTab) {
-    throw new Error('Reabra o StepScript pelo ícone para acessar a aba ativa.');
+    throw new Error(STALE_TAB_CONTEXT_MESSAGE);
   }
 
   return { id: activeTab.tabId, url: activeTab.url };
@@ -34,6 +35,10 @@ export async function startRecordingSession(): Promise<RecordingState> {
   }
 
   const origin = new URL(activeTab.url).origin;
+  const latestTab = await getActiveTab();
+  if (latestTab.id !== activeTab.id || latestTab.url !== activeTab.url) {
+    throw new Error(STALE_TAB_CONTEXT_MESSAGE);
+  }
   const message: ExtensionMessage = {
     type: 'START_RECORDING',
     payload: { tabId: activeTab.id, origin, url: activeTab.url },

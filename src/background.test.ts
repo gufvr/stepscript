@@ -26,6 +26,10 @@ const getLocalStorage = vi.fn();
 const setLocalStorage = vi.fn();
 const executeScript = vi.fn();
 const tabsSendMessage = vi.fn();
+const tabsActivated = vi.fn();
+const tabsRemoved = vi.fn();
+const tabsUpdated = vi.fn();
+const tabsQuery = vi.fn();
 
 let localStorageData: Record<string, unknown>;
 let sessionStorageData: Record<string, unknown>;
@@ -219,6 +223,11 @@ describe('extension action', () => {
     setLocalStorage.mockReset();
     executeScript.mockReset();
     tabsSendMessage.mockReset();
+    tabsActivated.mockReset();
+    tabsRemoved.mockReset();
+    tabsUpdated.mockReset();
+    tabsQuery.mockReset();
+    tabsQuery.mockResolvedValue([{ id: 21, windowId: 4, url: 'https://example.com/form' }]);
     localStorageData = {};
     sessionStorageData = {};
     openSidePanel.mockResolvedValue(undefined);
@@ -262,7 +271,12 @@ describe('extension action', () => {
         local: { get: getLocalStorage, set: setLocalStorage },
       },
       scripting: { executeScript },
-      tabs: { sendMessage: tabsSendMessage },
+      tabs: {
+        sendMessage: tabsSendMessage, query: tabsQuery,
+        onActivated: { addListener: tabsActivated },
+        onRemoved: { addListener: tabsRemoved },
+        onUpdated: { addListener: tabsUpdated },
+      },
       webNavigation: {
         onCommitted: { addListener: navigationCommitted },
         onDOMContentLoaded: { addListener: navigationDOMContentLoaded },
@@ -275,7 +289,7 @@ describe('extension action', () => {
     await import('./background');
   });
 
-  it('opens synchronously even while context persistence is pending', () => {
+  it('begins context persistence before opening synchronously while the write is pending', () => {
     setSessionStorage.mockReturnValue(new Promise(() => undefined));
     const handleActionClick = actionOnClicked.mock.calls[0][0];
 
@@ -294,8 +308,8 @@ describe('extension action', () => {
         url: 'https://example.com/form',
       },
     });
-    expect(openSidePanel.mock.invocationCallOrder[0]).toBeLessThan(
-      setSessionStorage.mock.invocationCallOrder[0],
+    expect(setSessionStorage.mock.invocationCallOrder[0]).toBeLessThan(
+      openSidePanel.mock.invocationCallOrder[0],
     );
   });
 
@@ -314,12 +328,12 @@ describe('extension action', () => {
     await Promise.resolve();
   });
 
-  it('does not open the panel when activeTab did not expose a URL', () => {
+  it('invalidates previous context and does not open when activeTab did not expose a URL', () => {
     const handleActionClick = actionOnClicked.mock.calls[0][0];
 
     handleActionClick({ id: 21, windowId: 4 });
 
-    expect(setSessionStorage).not.toHaveBeenCalled();
+    expect(setSessionStorage).toHaveBeenCalledWith({ activeTabContext: null });
     expect(openSidePanel).not.toHaveBeenCalled();
   });
 
