@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head><meta charset="UTF-8"><title>OTP de teste StepScript</title></head>
+  <body>
+    <section id="login"><h2>Login comum</h2><form><label for="email">Email</label><input id="email" type="email"><input type="password"><button type="submit">Entrar</button></form></section>
+    <section id="otp-login"><h2>OTP Login</h2><form>
+      <label for="username">Username</label><input id="username" type="text">
+      <label>OTP<input maxlength="1"></label><button type="submit">Submit</button>
+      <button type="button" id="fetch-otp">Fetch OTP</button>
+      <button type="button">Resend OTP</button>
+    </form><p role="status" id="result"></p></section>
+    <script>
+      document.getElementById('fetch-otp').addEventListener('click', () => {
+        document.getElementById('result').textContent = `OTP solicitado para ${document.getElementById('username').value}`;
+      });
+    </script>
+  </body>
+</html>

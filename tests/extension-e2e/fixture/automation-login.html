@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head><meta charset="UTF-8"><title>Login de teste StepScript</title></head>
+  <body>
+    <form id="login">
+      <label>E-mail <input type="email" data-testid="login-email"></label>
+      <label>Senha <input type="password" data-testid="login-password"></label>
+      <button type="submit">Entrar</button>
+    </form>
+    <p role="alert" id="result" hidden></p>
+    <script>
+      document.getElementById('login').addEventListener('submit', (event) => {
+        event.preventDefault();
+        if (document.querySelector('input[type="email"]').value === 'redirect@example.test') {
+          location.href = '/next.html';
+          return;
+        }
+        const result = document.getElementById('result');
+        result.hidden = false;
+        result.textContent = 'Dados de teste recebidos';
+      });
+    </script>
+  </body>
+</html>

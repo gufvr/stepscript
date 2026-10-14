@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StepScript social video</title>
+<style>
+  @font-face { font-family: Poppins; src: url('/font.woff2') format('woff2'); font-weight: 400 700; }
+  * { box-sizing: border-box; }
+  body { width: 1080px; height: 1350px; overflow: hidden; margin: 0; background: #0e1022; color: #f8f7ff; font-family: Poppins, sans-serif; }
+  main { height: 100%; position: relative; overflow: hidden; background: radial-gradient(circle at 88% 7%, #722ddc 0, transparent 31%), linear-gradient(145deg, #11162c 0%, #151033 54%, #0b1020 100%); }
+  .grid { position: absolute; inset: 0; opacity: .23; background-image: linear-gradient(#a775ff22 1px, transparent 1px), linear-gradient(90deg, #a775ff22 1px, transparent 1px); background-size: 56px 56px; }
+  .brand { position: absolute; top: 48px; left: 62px; display: flex; align-items: center; gap: 14px; font-size: 27px; font-weight: 700; }
+  .brand img { width: 42px; height: 42px; }
+  .recording-demo, .review, .code, .outro { position: absolute; left: 62px; right: 62px; }
+  .recording-demo { top: 144px; opacity: 1; animation: recording 20s both; }
+  .eyebrow { margin: 0 0 15px; color: #caaaff; font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 2.3px; }
+  .browser { overflow: hidden; border: 1px solid #c7a6ff88; border-radius: 27px; background: #f8f9fd; box-shadow: 0 24px 70px #0008; }
+  .browser-bar { display: flex; align-items: center; height: 58px; padding: 0 21px; gap: 9px; border-bottom: 1px solid #e5e7ef; background: #f0f2f8; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: #c4c9d5; }
+  .address { margin-left: 15px; flex: 1; border-radius: 9px; padding: 8px 14px; background: #fff; color: #71778b; font: 15px Poppins, sans-serif; }
+  .browser-content { display: grid; grid-template-columns: 62% 38%; min-height: 735px; }
+  .login-page { display: grid; place-items: center; padding: 42px; background: linear-gradient(135deg, #f2f0fb, #f9fafc); }
+  .login-card { width: 100%; max-width: 485px; padding: 39px; border: 1px solid #e0d8f3; border-radius: 21px; background: #fff; color: #252a45; box-shadow: 0 13px 30px #2e174415; }
+  .login-card .mini-brand { color: #692acf; font-size: 17px; font-weight: 700; }
+  .login-card h1 { margin: 27px 0 7px; font-size: 34px; letter-spacing: -1px; }
+  .login-card p { margin: 0 0 27px; color: #73788d; font-size: 16px; }
+  label { display: block; margin: 16px 0 7px; color: #373d5b; font-size: 15px; font-weight: 700; }
+  .fake-input { display: flex; align-items: center; height: 48px; padding: 0 13px; border: 1px solid #cdd2de; border-radius: 9px; color: #596078; font-size: 15px; }
+  .typed-email, .typed-password { opacity: 0; animation-fill-mode: both; }
+  .typed-email { animation: reveal .3s 3s both; }
+  .typed-password { animation: reveal .3s 5.5s both; letter-spacing: 3px; }
+  .login-button { width: 100%; height: 49px; margin-top: 27px; border: 0; border-radius: 9px; background: #6324cd; color: #fff; font: 700 17px Poppins, sans-serif; }
+  .login-hint { margin-top: 18px; color: #878ca0; font-size: 12px; text-align: center; }
+  .side-panel { overflow: hidden; border-left: 1px solid #e1e4ed; background: #fff; color: #242b45; }
+  .panel-top { display: flex; align-items: center; justify-content: space-between; padding: 23px 20px 18px; border-bottom: 1px solid #e8eaf1; font-weight: 700; }
+  .panel-top span { color: #6324cd; font-size: 17px; }
+  .live { display: flex; align-items: center; gap: 7px; padding: 15px 20px; color: #08775c; font-size: 13px; font-weight: 700; }
+  .live i { width: 8px; height: 8px; border-radius: 50%; background: #0aab7d; }
+  .stop { margin: 0 20px 17px; padding: 11px; border: 1px solid #e4b1b6; border-radius: 8px; color: #a52c39; font-size: 13px; font-weight: 700; text-align: center; }
+  .steps-title { padding: 0 20px 11px; color: #5e657c; font-size: 13px; font-weight: 700; }
+  .mini-step { display: grid; grid-template-columns: 25px 1fr; gap: 9px; align-items: center; min-height: 71px; padding: 10px 18px; border-top: 1px solid #eef0f4; opacity: 0; transform: translateY(9px); }
+  .mini-step b { display: grid; place-items: center; width: 23px; height: 23px; border-radius: 7px; background: #eee6ff; color: #6727ce; font-size: 11px; }
+  .mini-step strong { display: block; font-size: 12px; line-height: 1.25; }
+  .mini-step small { display: block; margin-top: 3px; color: #747b90; font-size: 10px; }
+  .mini-step.password small { color: #8a5b00; }
+  .step-one { animation: miniStep .35s 3.45s both; }
+  .step-two { animation: miniStep .35s 5.9s both; }
+  .step-three { animation: miniStep .35s 8.2s both; }
+  .step-four { animation: miniStep .35s 9.8s both; }
+  .pointer { position: absolute; z-index: 3; top: 402px; left: 398px; width: 31px; height: 41px; filter: drop-shadow(0 3px 3px #0005); animation: pointer 10.7s both; }
+  .pointer path { fill: #10131c; stroke: #fff; stroke-linejoin: round; stroke-width: 1.5; }
+  .click { position: absolute; top: 405px; left: 397px; width: 45px; height: 45px; border: 3px solid #7333e4; border-radius: 50%; opacity: 0; animation: clicks 10.7s both; }
+  .recording-caption { margin-top: 17px; color: #dfe0f0; font-size: 21px; text-align: center; }
+  .review { top: 176px; opacity: 0; animation: review 20s both; }
+  .panel { overflow: hidden; border: 1px solid #c7a6ff88; border-radius: 30px; background: #f8f9fd; color: #1d2140; box-shadow: 0 24px 70px #0008; }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 34px 40px; border-bottom: 1px solid #e1e4ef; }
+  .panel-header h2 { margin: 0; font-size: 30px; }
+  .recording { color: #08775c; font-size: 17px; font-weight: 700; }
+  .count { display: inline-grid; place-items: center; width: 38px; height: 38px; margin-left: 12px; border-radius: 50%; background: #ece3ff; color: #6324cd; font-size: 17px; }
+  .step { display: grid; grid-template-columns: 54px 1fr; gap: 18px; align-items: center; min-height: 105px; padding: 18px 40px; border-bottom: 1px solid #e6e8f0; }
+  .number { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: #ede5ff; color: #6324cd; font-weight: 700; }
+  .step strong { display: block; font-size: 20px; }
+  .step small { display: block; margin-top: 5px; color: #6b7187; font-size: 16px; }
+  .step .protected { color: #8a5b00; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 29px 40px; }
+  .action { padding: 17px; border: 1px solid #d1b8ff; border-radius: 12px; color: #4c258f; font-size: 18px; font-weight: 700; text-align: center; }
+  .action.active { border-color: #6324cd; background: #6324cd; color: #fff; }
+  .review-note { margin-top: 21px; color: #d8d9e9; font-size: 22px; text-align: center; }
+  .code { top: 151px; opacity: 0; animation: code 20s both; }
+  .code-title { display: flex; align-items: center; gap: 14px; margin: 0 0 22px; color: #d9c7ff; font-size: 30px; font-weight: 700; }
+  .badge { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #7743dd; color: white; font: 700 25px monospace; }
+  pre { height: 845px; margin: 0; overflow: hidden; padding: 36px; border: 1px solid #b98cff55; border-radius: 28px; background: #111626; color: #e8ebf7; box-shadow: 0 24px 70px #0008; font: 19px/1.55 Consolas, 'Courier New', monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .code-note { margin-top: 22px; color: #d8d9e9; font-size: 22px; text-align: center; }
+  .outro { top: 452px; opacity: 0; animation: outro 20s both; text-align: center; }
+  .outro .mark { font-size: 68px; color: #c09aff; font-weight: 700; }
+  .outro p { margin: 20px auto 0; max-width: 780px; color: #e2e2f3; font-size: 30px; line-height: 1.45; }
+  footer { position: absolute; bottom: 50px; left: 62px; right: 62px; display: flex; justify-content: space-between; color: #bfc1d8; font-size: 19px; }
+  @keyframes reveal { to { opacity: 1; } }
+  @keyframes miniStep { to { opacity: 1; transform: translateY(0); } }
+  @keyframes pointer { 0%, 22% { transform: translate(0, 0); } 27%, 43% { transform: translate(0, 78px); } 48%, 64% { transform: translate(0, 170px); } 69%, 86% { transform: translate(217px, 170px); } 100% { transform: translate(217px, 170px); opacity: 0; } }
+  @keyframes clicks { 0%, 27%, 48%, 69% { opacity: 0; transform: scale(.65); } 29%, 50%, 71% { opacity: .85; transform: scale(1); } 32%, 53%, 74%, 100% { opacity: 0; transform: scale(1.45); } }
+  @keyframes recording { 0%, 48% { opacity: 1; transform: translateY(0); } 54%, 100% { opacity: 0; transform: translateY(-22px); } }
+  @keyframes review { 0%, 50% { opacity: 0; transform: translateY(25px); } 56%, 66% { opacity: 1; transform: translateY(0); } 71%, 100% { opacity: 0; transform: translateY(-22px); } }
+  @keyframes code { 0%, 67% { opacity: 0; transform: translateY(28px); } 73%, 86% { opacity: 1; transform: translateY(0); } 91%, 100% { opacity: 0; transform: translateY(-22px); } }
+  @keyframes outro { 0%, 89% { opacity: 0; transform: translateY(20px); } 94%, 100% { opacity: 1; transform: translateY(0); } }
+</style>
+<main>
+  <div class="grid"></div>
+  <div class="brand"><img src="/icon.png" alt="">StepScript</div>
+  <section class="recording-demo">
+    <div class="eyebrow">Da interação ao teste automatizado</div>
+    <div class="browser">
+      <div class="browser-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><div class="address">🔒 https://app.example.com/login</div></div>
+      <div class="browser-content">
+        <div class="login-page"><div class="login-card"><div class="mini-brand">ACME · área de testes</div><h1>Bem-vindo de volta</h1><p>Acesse o painel com sua conta de demonstração.</p><label>E-mail</label><div class="fake-input"><span class="typed-email">qa.demo@example.com</span></div><label>Senha</label><div class="fake-input"><span class="typed-password">••••••••</span></div><button class="login-button" type="button">Entrar</button><div class="login-hint">Fluxo fictício — nenhum dado real é usado.</div></div></div>
+        <aside class="side-panel"><div class="panel-top"><span>StepScript</span><b>⋮</b></div><div class="live"><i></i> Gravação em andamento</div><div class="stop">■ Parar gravação</div><div class="steps-title">PASSOS GRAVADOS</div><div class="mini-step step-one"><b>1</b><div><strong>Preencheu “E-mail”</strong><small>qa.demo@example.com</small></div></div><div class="mini-step password step-two"><b>2</b><div><strong>Preencheu “Senha”</strong><small>Valor protegido</small></div></div><div class="mini-step step-three"><b>3</b><div><strong>Clicou em “Entrar”</strong><small>data-testid=login-submit</small></div></div><div class="mini-step step-four"><b>4</b><div><strong>Verificou URL atual</strong><small>/dashboard</small></div></div></aside>
+      </div>
+      <svg class="pointer" viewBox="0 0 28 36" aria-hidden="true"><path d="M3 2v28l7.3-7.1 5.2 11 5-2.4-5.3-11.1L26 20 3 2z"/></svg><i class="click"></i>
+    </div>
+    <div class="recording-caption">O cursor percorre o fluxo. O Side Panel registra cada passo.</div>
+  </section>
+  <section class="review"><div class="panel"><div class="panel-header"><h2>Passos gravados <span class="count">4</span></h2><span class="recording">● Gravação concluída</span></div><div class="step"><span class="number">1</span><div><strong>Preencheu “E-mail”</strong><small>qa.demo@example.com</small></div></div><div class="step"><span class="number">2</span><div><strong>Preencheu “Senha”</strong><small class="protected">Valor protegido</small></div></div><div class="step"><span class="number">3</span><div><strong>Clicou no botão “Entrar”</strong><small>data-testid=login-submit</small></div></div><div class="step"><span class="number">4</span><div><strong>Verificou a URL atual</strong><small>/dashboard</small></div></div><div class="actions"><div class="action" id="playwright-action">Gerar Playwright</div><div class="action" id="cypress-action">Gerar Cypress</div></div></div><div class="review-note">Revise os passos antes de exportar o teste.</div></section>
+  <section class="code"><div class="code-title"><span class="badge">&lt;/&gt;</span><span id="framework-title"></span></div><pre id="generated-code"></pre><div class="code-note">Senha protegida por variável de ambiente no código de exemplo.</div></section>
+  <section class="outro"><div class="mark">Capture → organize → test</div><p>Menos trabalho repetitivo. Mais espaço para pensar na qualidade.</p></section>
+  <footer><span>StepScript · browser flow recorder</span><span id="framework-footer"></span></footer>
+</main>
+<script>
+  const data = __VIDEO_DATA__;
+  document.getElementById('framework-title').textContent = `Código ${data.framework}`;
+  document.getElementById('framework-footer').textContent = data.framework;
+  document.getElementById('generated-code').textContent = data.code;
+  document.getElementById(`${data.framework.toLowerCase()}-action`).classList.add('active');
+</script>
+</html>

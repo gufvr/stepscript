@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head><meta charset="UTF-8"><title>StepScript Replay Fixture</title></head>
+  <body>
+    <label for="email">E-mail</label><input id="email" data-testid="replay-email" type="email">
+    <label for="choice">Opção</label><select id="choice" data-testid="replay-choice"><option value="a">A</option><option value="b">B</option></select>
+    <label><input data-testid="replay-check" type="checkbox">Confirmar</label>
+    <button data-testid="replay-action" onclick="document.body.dataset.action = 'clicked'">Ação bloqueada</button>
+    <p data-testid="replay-message">Pronto para testar</p>
+  </body>
+</html>

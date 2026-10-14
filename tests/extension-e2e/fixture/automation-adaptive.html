@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head><meta charset="UTF-8"><title>Login adaptativo StepScript</title></head>
+  <body>
+    <form id="login"><h2>Login de teste</h2>
+      <label for="email">E-mail</label><input id="email" type="email" autocomplete="username">
+      <label for="phone">Telefone</label><input id="phone" type="tel" autocomplete="tel">
+      <button type="button" id="advance">Avançar</button>
+    </form>
+    <p role="status" id="result"></p>
+    <script>
+      document.getElementById('advance').addEventListener('click', () => {
+        document.getElementById('result').textContent = `Identificador: ${document.getElementById('phone').value}`;
+        document.getElementById('login').innerHTML = '<h2>Login de teste</h2><label for="password">Senha</label><input id="password" type="password"><button type="button" id="enter">Entrar</button>';
+        document.getElementById('enter').addEventListener('click', () => {
+          document.getElementById('result').textContent = 'Login de teste enviado';
+        });
+      });
+    </script>
+  </body>
+</html>

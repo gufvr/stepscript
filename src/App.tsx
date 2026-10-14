@@ -7,6 +7,7 @@ import {
   RECORDING_PRIVACY_NOTICE_ID,
 } from './components/PrivacyNotice';
 import { RecordingButton } from './components/RecordingButton';
+import { ReplayControls } from './components/ReplayControls';
 import { StatusBanner } from './components/StatusBanner';
 import { useRecordingState } from './hooks/useRecordingState';
 import { useRecordedSteps } from './hooks/useRecordedSteps';
@@ -86,6 +87,7 @@ export function App() {
             describedBy={RECORDING_PRIVACY_NOTICE_ID}
           />
         </RecordingCard>
+        <ReplayControls stepCount={steps.length} isRecording={isRecording} />
         <RecordedStepsList
           steps={steps}
           isRecording={isRecording}

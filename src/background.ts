@@ -31,6 +31,9 @@ import {
   type SameDocumentNavigationDetails,
   type SameDocumentNavigationSource,
 } from './services/navigationCapture';
+import { prepareReplay, startReplay, getReplayStatus, interruptReplay } from './replay/replaySession';
+import { runQuickAutomation } from './automation/quickAutomation';
+import { createLoginRecordedSteps } from './automation/createLoginRecordedSteps';
 
 const RECORDING_STATE_KEY = 'recordingState';
 const RECORDED_STEPS_KEY = 'recordedSteps';
@@ -220,13 +223,16 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
+  interruptReplay('A aba ativa mudou; execução interrompida.');
   void invalidateContextForActivation(tabId, windowId).catch(() => undefined);
 });
 chrome.tabs.onRemoved.addListener((tabId) => {
+  interruptReplay('A aba foi fechada; execução interrompida.', tabId);
   void invalidateContextForClosedTab(tabId).catch(() => undefined);
 });
 chrome.tabs.onUpdated.addListener((tabId, changes) => {
   if (changes.url) {
+    interruptReplay('A URL mudou; execução interrompida.', tabId);
     void updateActiveTabContextUrl(tabId, changes.url).catch(() => undefined);
   }
 });
@@ -236,6 +242,9 @@ async function startRecording(
   origin: string,
   url: string,
 ): Promise<ExtensionResponse> {
+  if (getReplayStatus().replayStatus?.phase === 'running') {
+    return { success: false, error: 'Interrompa a execução antes de iniciar uma gravação.' };
+  }
   const context = await validateActiveTabContext();
   if (!context || context.tabId !== tabId || context.url !== url || new URL(context.url).origin !== origin) {
     return { success: false, error: STALE_TAB_CONTEXT_MESSAGE };
@@ -958,6 +967,7 @@ function recordDocumentReady(details: ReadyWebNavigationDetails) {
 
 chrome.webNavigation.onCommitted.addListener((details) => {
   if (details.frameId === 0) {
+    interruptReplay('O documento mudou; execução interrompida.', details.tabId);
     void updateActiveTabContextUrl(details.tabId, details.url).catch(() => undefined);
   }
   recordCommittedDocumentNavigation(details);
@@ -973,6 +983,7 @@ chrome.webNavigation.onCompleted.addListener((details) => {
 
 chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
   if (details.frameId === 0) {
+    interruptReplay('A URL mudou; execução interrompida.', details.tabId);
     void updateActiveTabContextUrl(details.tabId, details.url).catch(() => undefined);
   }
   recordSameDocumentNavigation(details, 'history-api');
@@ -980,6 +991,7 @@ chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
 
 chrome.webNavigation.onReferenceFragmentUpdated.addListener((details) => {
   if (details.frameId === 0) {
+    interruptReplay('A URL mudou; execução interrompida.', details.tabId);
     void updateActiveTabContextUrl(details.tabId, details.url).catch(() => undefined);
   }
   recordSameDocumentNavigation(details, 'fragment');
@@ -992,6 +1004,33 @@ chrome.runtime.onMessage.addListener(
     sendResponse: (response: ExtensionResponse) => void,
   ) => {
     const handleMessage = async () => {
+      if (message.type === 'INSPECT_LOGIN_AUTOMATION') return runQuickAutomation({ kind: 'inspect-login' });
+      if (message.type === 'RUN_QUICK_AUTOMATION') {
+        const result = await runQuickAutomation(message.payload);
+        if (!result.success || message.payload.kind !== 'login' || result.automationExport?.kind !== 'login') return result;
+        try {
+          const count = await enqueueRecordedStepOperation(async () => {
+            const stored = await chrome.storage.local.get([RECORDING_STATE_KEY, RECORDED_STEPS_KEY]);
+            if ((stored[RECORDING_STATE_KEY] as RecordingState | undefined)?.isRecording) return 0;
+            const steps = createLoginRecordedSteps(result.automationExport as Extract<NonNullable<ExtensionResponse['automationExport']>, { kind: 'login' }>, message.payload.username ?? '');
+            if (!steps.length) return 0;
+            const existing = Array.isArray(stored[RECORDED_STEPS_KEY]) ? stored[RECORDED_STEPS_KEY] as RecordedStep[] : [];
+            await chrome.storage.local.set({ [RECORDED_STEPS_KEY]: [...existing, ...steps] });
+            return steps.length;
+          });
+          return { ...result, automationSteps: [...(result.automationSteps ?? []),
+            count ? `${count} passos de login adicionados à lista de passos gravados.` : 'Não foi possível adicionar passos de login à lista.'] };
+        } catch {
+          return { ...result, automationSteps: [...(result.automationSteps ?? []), 'O login foi enviado, mas os passos não puderam ser salvos.'] };
+        }
+      }
+      if (message.type === 'PREPARE_REPLAY') return prepareReplay();
+      if (message.type === 'START_REPLAY') return startReplay(message.payload.token);
+      if (message.type === 'GET_REPLAY_STATUS') return getReplayStatus();
+      if (message.type === 'CANCEL_REPLAY') {
+        interruptReplay('Execução cancelada pelo usuário.');
+        return getReplayStatus();
+      }
       if (message.type === 'START_RECORDING') {
         return enqueueRecordedStepOperation(() =>
           startRecording(

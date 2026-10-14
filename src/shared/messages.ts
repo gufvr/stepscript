@@ -11,8 +11,37 @@ import type {
   ElementVisibilitySelection,
   ElementTextSelection,
 } from './recordingTypes';
+import type { ReplayStatus, ReplayStepResult } from '../replay/replaySession';
+import type { AutomationExportPlan } from '../automation/automationExport';
+
+export interface LoginAutomationTarget {
+  selector: string;
+  label: string;
+}
+
+export interface LoginAutomationForm {
+  fingerprint: string;
+  label: string;
+  actionLabel: string;
+  requiresPassword: boolean;
+  identifiers: LoginAutomationTarget[];
+  passwords: LoginAutomationTarget[];
+  actions: LoginAutomationTarget[];
+}
+
+export interface LoginAutomationSelection {
+  identifierSelector?: string;
+  passwordSelector?: string;
+  actionSelector: string;
+}
 
 export type ExtensionMessage =
+  | { type: 'INSPECT_LOGIN_AUTOMATION' }
+  | { type: 'RUN_QUICK_AUTOMATION'; payload: { kind: 'login' | 'visible-errors' | 'technical-errors'; username?: string; password?: string; loginFingerprint?: string; loginDocumentId?: string; loginSelection?: LoginAutomationSelection } }
+  | { type: 'PREPARE_REPLAY' }
+  | { type: 'START_REPLAY'; payload: { token: string } }
+  | { type: 'GET_REPLAY_STATUS' }
+  | { type: 'CANCEL_REPLAY' }
   | {
       type: 'START_RECORDING';
       payload: { tabId: number; origin: string; url: string };
@@ -92,4 +121,10 @@ export interface ExtensionResponse {
   error?: string;
   activeTabContext?: ActiveTabContext;
   pickerState?: ElementVisibilityPickerState;
+  replayPreview?: { token: string; origin: string; steps: ReplayStepResult[] };
+  replayStatus?: ReplayStatus;
+  automationSteps?: string[];
+  automationExport?: AutomationExportPlan;
+  loginForms?: LoginAutomationForm[];
+  loginDocumentId?: string;
 }
