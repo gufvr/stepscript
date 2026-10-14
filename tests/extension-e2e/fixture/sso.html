@@ -1,0 +1,5 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>SSO fixture</title></head>
+<body><main><h1>Sample application</h1><button id="google-sso" type="button"
+  data-url="https://accounts.google.com/o/oauth2/v2/auth?state=do-not-record&client_id=fake">Continue with Google</button></main>
+<script>document.querySelector('#google-sso').addEventListener('click', event => { event.preventDefault(); document.documentElement.dataset.ssoClicked = String(Number(document.documentElement.dataset.ssoClicked || 0) + 1); });</script></body></html>

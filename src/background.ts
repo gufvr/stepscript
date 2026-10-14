@@ -34,6 +34,10 @@ import {
 import { prepareReplay, startReplay, getReplayStatus, interruptReplay } from './replay/replaySession';
 import { runQuickAutomation } from './automation/quickAutomation';
 import { createLoginRecordedSteps } from './automation/createLoginRecordedSteps';
+import { runSsoAutomation, type SsoAutomationContext } from './automation/ssoAutomation';
+import { createSsoStartStep } from './automation/createSsoRecordedSteps';
+import type { SsoAutomationOption } from './shared/messages';
+import { safeAutomationUrl } from './automation/safeAutomationUrl';
 
 const RECORDING_STATE_KEY = 'recordingState';
 const RECORDED_STEPS_KEY = 'recordedSteps';
@@ -66,6 +70,85 @@ type RecordedStepActionMessage = Extract<
 >;
 
 let recordedStepOperationQueue: Promise<void> = Promise.resolve();
+
+type SsoFlow = {
+  sourceTabId: number;
+  sourceOrigin: string;
+  sourceUrl: string;
+  provider: string;
+  watchedTabs: Set<number>;
+  sawExternal: boolean;
+  phase: 'started' | 'external' | 'returned' | 'manual';
+  message: string;
+};
+let ssoFlow: SsoFlow | undefined;
+
+function getSsoFlowStatus(): ExtensionResponse {
+  return { success: true, ssoFlow: ssoFlow
+    ? { phase: ssoFlow.phase, message: ssoFlow.message }
+    : { phase: 'idle', message: 'Nenhum fluxo SSO iniciado nesta sessão.' } };
+}
+
+async function recordSsoStart(context: SsoAutomationContext, option: SsoAutomationOption) {
+  const safeUrl = safeAutomationUrl(context.url);
+  ssoFlow = { sourceTabId: context.tabId, sourceOrigin: context.origin, sourceUrl: safeUrl,
+    provider: option.provider, watchedTabs: new Set([context.tabId]), sawExternal: false,
+    phase: 'started', message: `Início do SSO ${option.provider} registrado. Complete a autenticação manualmente.` };
+  await enqueueRecordedStepOperation(async () => {
+    const stored = await chrome.storage.local.get([RECORDING_STATE_KEY, RECORDED_STEPS_KEY]);
+    if ((stored[RECORDING_STATE_KEY] as RecordingState | undefined)?.isRecording) {
+      ssoFlow = { ...ssoFlow!, phase: 'manual', message: 'A gravação foi iniciada; confira o fluxo SSO manualmente.' };
+      return;
+    }
+    const existing = Array.isArray(stored[RECORDED_STEPS_KEY]) ? stored[RECORDED_STEPS_KEY] as RecordedStep[] : [];
+    await chrome.storage.local.set({ [RECORDED_STEPS_KEY]: [...existing, createSsoStartStep(safeUrl, option)] });
+  });
+}
+
+function safeObservedSiteUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol)) return undefined;
+    url.search = '';
+    url.hash = '';
+    url.pathname = url.pathname.replace(/\/(?:[a-f\d]{32,}|[a-z\d_-]{40,})(?=\/|$)/ig, '/[redacted]');
+    return url.toString();
+  } catch { return undefined; }
+}
+
+function observeSsoNavigation(details: CommittedWebNavigationDetails) {
+  const flow = ssoFlow;
+  if (!flow || details.frameId !== 0 || !flow.watchedTabs.has(details.tabId)) return;
+  let origin: string;
+  try { origin = new URL(details.url).origin; } catch { return; }
+  if (origin !== flow.sourceOrigin) {
+    flow.sawExternal = true;
+    flow.phase = 'external';
+    flow.message = 'A navegação saiu do site de origem. Conclua o SSO manualmente; o conteúdo externo não é inspecionado.';
+    return;
+  }
+  if (!flow.sawExternal) return;
+  const returnedUrl = safeObservedSiteUrl(details.url);
+  if (!returnedUrl) {
+    flow.phase = 'manual';
+    flow.message = 'O retorno não pôde ser validado. Confira o resultado manualmente.';
+    return;
+  }
+  flow.phase = 'returned';
+  flow.message = 'Retorno ao site de origem observado. Verifique o resultado do login manualmente.';
+  flow.sawExternal = false;
+  const safeSource = safeObservedSiteUrl(flow.sourceUrl) ?? flow.sourceUrl;
+  void enqueueRecordedStepOperation(async () => {
+    const detailsForStep = { url: returnedUrl, timeStamp: details.timeStamp, documentId: details.documentId,
+      transitionType: details.transitionType, transitionQualifiers: details.transitionQualifiers };
+    const step = createRecordedDocumentNavigation(safeSource, detailsForStep);
+    const stored = await chrome.storage.local.get(RECORDED_STEPS_KEY);
+    const existing = Array.isArray(stored[RECORDED_STEPS_KEY]) ? stored[RECORDED_STEPS_KEY] as RecordedStep[] : [];
+    await chrome.storage.local.set({ [RECORDED_STEPS_KEY]: [...existing, step] });
+  }).catch(() => {
+    if (ssoFlow) { ssoFlow.phase = 'manual'; ssoFlow.message = 'O retorno ocorreu, mas o passo de retorno não pôde ser registrado.'; }
+  });
+}
 
 async function setElementVisibilityPickerState(
   state: ElementVisibilityPickerState,
@@ -229,6 +312,9 @@ chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   interruptReplay('A aba foi fechada; execução interrompida.', tabId);
   void invalidateContextForClosedTab(tabId).catch(() => undefined);
+});
+chrome.tabs.onCreated?.addListener((tab) => {
+  if (ssoFlow && tab.openerTabId === ssoFlow.sourceTabId && typeof tab.id === 'number') ssoFlow.watchedTabs.add(tab.id);
 });
 chrome.tabs.onUpdated.addListener((tabId, changes) => {
   if (changes.url) {
@@ -966,11 +1052,16 @@ function recordDocumentReady(details: ReadyWebNavigationDetails) {
 }
 
 chrome.webNavigation.onCommitted.addListener((details) => {
+  observeSsoNavigation(details);
   if (details.frameId === 0) {
     interruptReplay('O documento mudou; execução interrompida.', details.tabId);
     void updateActiveTabContextUrl(details.tabId, details.url).catch(() => undefined);
   }
   recordCommittedDocumentNavigation(details);
+});
+
+chrome.webNavigation.onCreatedNavigationTarget?.addListener((details) => {
+  if (ssoFlow && details.sourceTabId === ssoFlow.sourceTabId) ssoFlow.watchedTabs.add(details.tabId);
 });
 
 chrome.webNavigation.onDOMContentLoaded.addListener((details) => {
@@ -1005,6 +1096,9 @@ chrome.runtime.onMessage.addListener(
   ) => {
     const handleMessage = async () => {
       if (message.type === 'INSPECT_LOGIN_AUTOMATION') return runQuickAutomation({ kind: 'inspect-login' });
+      if (message.type === 'INSPECT_SSO_AUTOMATION') return runSsoAutomation({ kind: 'inspect' });
+      if (message.type === 'START_SSO_AUTOMATION') return runSsoAutomation({ kind: 'start', ...message.payload }, recordSsoStart);
+      if (message.type === 'GET_SSO_FLOW_STATUS') return getSsoFlowStatus();
       if (message.type === 'RUN_QUICK_AUTOMATION') {
         const result = await runQuickAutomation(message.payload);
         if (!result.success || message.payload.kind !== 'login' || result.automationExport?.kind !== 'login') return result;

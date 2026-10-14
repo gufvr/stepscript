@@ -66,4 +66,51 @@ describe('ReplayControls wizard', () => {
       loginSelection: { identifierSelector: '#phone', passwordSelector: '#pass', actionSelector: '#enter' },
     } }));
   });
+
+  it('reviews a sanitized SSO destination and starts only after explicit confirmation', async () => {
+    const option = { fingerprint: 'google-action', provider: 'Google', actionLabel: 'Continue with Google',
+      destination: 'https://accounts.google.com/o/oauth2/auth', actionSelector: '#google', actionTagName: 'a', canStart: true };
+    const sendMessage = vi.fn(async (message: { type: string }) => message.type === 'GET_ACTIVE_TAB_CONTEXT'
+      ? { success: true, activeTabContext: { url: 'https://example.com/login', tabId: 1, windowId: 1 } }
+      : message.type === 'INSPECT_SSO_AUTOMATION'
+        ? { success: true, ssoOptions: [option], ssoDocumentId: 'sso-document' }
+        : message.type === 'START_SSO_AUTOMATION'
+          ? { success: true, automationSteps: ['Início do fluxo SSO registrado.'] }
+          : message.type === 'GET_SSO_FLOW_STATUS'
+            ? { success: true, ssoFlow: { phase: 'started', message: 'Conclua manualmente.' } }
+            : { success: true, replayStatus: { phase: 'idle', steps: [] } });
+    vi.stubGlobal('chrome', { runtime: { sendMessage }, permissions: { request: vi.fn(async () => true) } });
+    renderControls(0, false);
+    fireEvent.click(screen.getByRole('button', { name: /Executar automa\u00e7\u00e3o de passos/ }));
+    fireEvent.change(screen.getByRole('combobox', { name: /Tipo de automa\u00e7\u00e3o/ }), { target: { value: 'sso' } });
+    await waitFor(() => expect(screen.getByRole('button', { name: /Analisar op\u00e7\u00f5es SSO/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: /Analisar op\u00e7\u00f5es SSO/ }));
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /Op\u00e7\u00e3o SSO/ })).toBeInTheDocument());
+    expect(screen.getByText(option.destination)).toBeInTheDocument();
+    expect(sendMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'START_SSO_AUTOMATION' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar e iniciar SSO' }));
+    await waitFor(() => expect(sendMessage).toHaveBeenCalledWith({ type: 'START_SSO_AUTOMATION', payload: {
+      fingerprint: option.fingerprint, destination: option.destination, documentId: 'sso-document',
+    } }));
+    expect(await screen.findByText('Conclua manualmente.')).toBeInTheDocument();
+  });
+
+  it('keeps an ambiguous SSO destination manual-only', async () => {
+    const option = { fingerprint: 'unknown', provider: 'Unknown provider', actionLabel: 'Continue with Acme',
+      destination: 'https://identity.example.test/oauth/authorize', actionSelector: '#acme', actionTagName: 'a', canStart: false,
+      manualReason: 'External provider not identified safely; continue manually.' };
+    const sendMessage = vi.fn(async (message: { type: string }) => message.type === 'GET_ACTIVE_TAB_CONTEXT'
+      ? { success: true, activeTabContext: { url: 'https://example.com/login', tabId: 1, windowId: 1 } }
+      : message.type === 'INSPECT_SSO_AUTOMATION'
+        ? { success: true, ssoOptions: [option], ssoDocumentId: 'sso-document' }
+        : { success: true, replayStatus: { phase: 'idle', steps: [] } });
+    vi.stubGlobal('chrome', { runtime: { sendMessage }, permissions: { request: vi.fn(async () => true) } });
+    renderControls(0, false);
+    fireEvent.click(screen.getByRole('button', { name: /Executar automa\u00e7\u00e3o de passos/ }));
+    fireEvent.change(screen.getByRole('combobox', { name: /Tipo de automa\u00e7\u00e3o/ }), { target: { value: 'sso' } });
+    await waitFor(() => expect(screen.getByRole('button', { name: /Analisar op\u00e7\u00f5es SSO/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: /Analisar op\u00e7\u00f5es SSO/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Confirmar e iniciar SSO' })).toBeDisabled());
+    expect(screen.getByText(/continue manually/)).toBeInTheDocument();
+  });
 });

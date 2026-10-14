@@ -35,8 +35,22 @@ export interface LoginAutomationSelection {
   actionSelector: string;
 }
 
+export interface SsoAutomationOption {
+  fingerprint: string;
+  provider: string;
+  actionLabel: string;
+  destination: string;
+  actionSelector: string;
+  actionTagName: string;
+  canStart: boolean;
+  manualReason?: string;
+}
+
 export type ExtensionMessage =
   | { type: 'INSPECT_LOGIN_AUTOMATION' }
+  | { type: 'INSPECT_SSO_AUTOMATION' }
+  | { type: 'START_SSO_AUTOMATION'; payload: { fingerprint: string; destination: string; documentId: string } }
+  | { type: 'GET_SSO_FLOW_STATUS' }
   | { type: 'RUN_QUICK_AUTOMATION'; payload: { kind: 'login' | 'visible-errors' | 'technical-errors'; username?: string; password?: string; loginFingerprint?: string; loginDocumentId?: string; loginSelection?: LoginAutomationSelection } }
   | { type: 'PREPARE_REPLAY' }
   | { type: 'START_REPLAY'; payload: { token: string } }
@@ -127,4 +141,7 @@ export interface ExtensionResponse {
   automationExport?: AutomationExportPlan;
   loginForms?: LoginAutomationForm[];
   loginDocumentId?: string;
+  ssoOptions?: SsoAutomationOption[];
+  ssoDocumentId?: string;
+  ssoFlow?: { phase: 'idle' | 'started' | 'external' | 'returned' | 'manual'; message: string };
 }

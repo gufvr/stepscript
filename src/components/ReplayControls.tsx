@@ -69,7 +69,7 @@ const stateLabel: Record<ReplayStepResult['status'], string> = {
 
 export function ReplayControls({ stepCount, isRecording }: { stepCount: number; isRecording: boolean }) {
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [kind, setKind] = useState<'login' | 'visible-errors' | 'technical-errors' | 'saved'>('login');
+  const [kind, setKind] = useState<'login' | 'sso' | 'visible-errors' | 'technical-errors' | 'saved'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginForms, setLoginForms] = useState<NonNullable<ExtensionResponse['loginForms']>>([]);
@@ -78,6 +78,10 @@ export function ReplayControls({ stepCount, isRecording }: { stepCount: number; 
   const [selectedIdentifier, setSelectedIdentifier] = useState('');
   const [selectedPassword, setSelectedPassword] = useState('');
   const [selectedAction, setSelectedAction] = useState('');
+  const [ssoOptions, setSsoOptions] = useState<NonNullable<ExtensionResponse['ssoOptions']>>([]);
+  const [ssoDocumentId, setSsoDocumentId] = useState<string>();
+  const [selectedSso, setSelectedSso] = useState('');
+  const [ssoFlow, setSsoFlow] = useState<ExtensionResponse['ssoFlow']>();
   const [automationSteps, setAutomationSteps] = useState<string[]>();
   const [automationExport, setAutomationExport] = useState<ExtensionResponse['automationExport']>();
   const [exportFeedback, setExportFeedback] = useState<string>();
@@ -103,6 +107,16 @@ export function ReplayControls({ stepCount, isRecording }: { stepCount: number; 
     }, 350);
     return () => window.clearInterval(interval);
   }, [status?.phase]);
+
+  useEffect(() => {
+    if (ssoFlow?.phase !== 'started' && ssoFlow?.phase !== 'external') return;
+    const interval = window.setInterval(() => {
+      void send({ type: 'GET_SSO_FLOW_STATUS' }).then((response) => {
+        if (response.ssoFlow) setSsoFlow(response.ssoFlow);
+      }).catch(() => undefined);
+    }, 700);
+    return () => window.clearInterval(interval);
+  }, [ssoFlow?.phase]);
 
   const running = status?.phase === 'running';
   const unavailableReason = isRecording
@@ -138,6 +152,48 @@ export function ReplayControls({ stepCount, isRecording }: { stepCount: number; 
       setSelectedAction(forms[0]?.actions[0]?.selector ?? '');
       if (!forms.length) setError('Nenhum formulário de login compatível foi encontrado nesta seção.');
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Não foi possível analisar os formulários.'); }
+    finally { setPending(false); }
+  }
+
+  async function inspectSso() {
+    setError(undefined);
+    setPending(true);
+    setSsoOptions([]);
+    setSelectedSso('');
+    setSsoDocumentId(undefined);
+    try {
+      const current = await send({ type: 'GET_ACTIVE_TAB_CONTEXT' });
+      const url = current.activeTabContext?.url;
+      if (!url) throw new Error('Reabra o StepScript pelo ícone na aba desejada.');
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Use uma página HTTP ou HTTPS.');
+      const granted = await chrome.permissions.request({ origins: [`${parsed.protocol}//${parsed.hostname}/*`] });
+      if (!granted) throw new Error('Autorize o site de origem para analisar as opções SSO.');
+      const response = await send({ type: 'INSPECT_SSO_AUTOMATION' });
+      if (!response.success) throw new Error(response.error ?? 'Não foi possível analisar as opções SSO.');
+      const options = response.ssoOptions ?? [];
+      setSsoOptions(options);
+      setSsoDocumentId(response.ssoDocumentId);
+      setSelectedSso(options[0]?.fingerprint ?? '');
+      if (!options.length) setError('Nenhuma opção SSO com destino explícito foi detectada nesta página.');
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Não foi possível analisar as opções SSO.'); }
+    finally { setPending(false); }
+  }
+
+  async function startSso() {
+    const option = ssoOptions.find((candidate) => candidate.fingerprint === selectedSso);
+    if (!option?.canStart || !ssoDocumentId) return;
+    setError(undefined);
+    setPending(true);
+    try {
+      const response = await send({ type: 'START_SSO_AUTOMATION', payload: {
+        fingerprint: option.fingerprint, destination: option.destination, documentId: ssoDocumentId,
+      } });
+      if (!response.success) throw new Error(response.error ?? 'Não foi possível iniciar o SSO.');
+      setAutomationSteps(response.automationSteps ?? ['Início do fluxo registrado. Conclua a autenticação manualmente.']);
+      const currentStatus = await send({ type: 'GET_SSO_FLOW_STATUS' });
+      setSsoFlow(currentStatus.ssoFlow);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : 'Não foi possível iniciar o SSO.'); }
     finally { setPending(false); }
   }
 
@@ -215,15 +271,32 @@ export function ReplayControls({ stepCount, isRecording }: { stepCount: number; 
   return <Card aria-label="Automação de passos">
     <strong>Automação de passos</strong>
     <Message>Escolha um teste para a aba atual. Não é preciso gravar antes.</Message>
-    <Button type="button" disabled={pending || running} onClick={() => { setWizardOpen(true); setUsername(''); setPassword(''); setError(undefined); setAutomationSteps(undefined); setAutomationExport(undefined); setExportFeedback(undefined); void inspectLogin(); }}>Executar automação de passos</Button>
+    <Button type="button" disabled={pending || running} onClick={() => { setWizardOpen(true); setUsername(''); setPassword(''); setError(undefined); setAutomationSteps(undefined); setAutomationExport(undefined); setExportFeedback(undefined); if (kind === 'sso') void inspectSso(); else void inspectLogin(); }}>Executar automação de passos</Button>
     {wizardOpen && <Wizard role="dialog" aria-label="Escolher automação de passos" aria-modal="false">
       <Message>Tipo de automação</Message>
       <Choice aria-label="Tipo de automação" value={kind} onChange={(event) => { setKind(event.target.value as typeof kind); setUsername(''); setPassword(''); setError(undefined); setAutomationSteps(undefined); setAutomationExport(undefined); setExportFeedback(undefined); }}>
         <option value="login">Login</option>
+        <option value="sso">SSO assistido</option>
         <option value="visible-errors">Busca de erros visíveis</option>
         <option value="technical-errors">Busca de erros técnicos (HTTP observável)</option>
         <option value="saved" disabled={Boolean(unavailableReason)}>Reproduzir passos gravados</option>
       </Choice>
+      {kind === 'sso' && <>
+        <Message>Revise provedor, ação e destino antes de iniciar. Após confirmar, o StepScript apenas abre o provedor; autenticação, MFA, CAPTCHA e consentimentos ficam sob sua ação. Páginas externas não são analisadas.</Message>
+        {!ssoOptions.length && <Button type="button" disabled={pending} onClick={() => void inspectSso()}>Analisar opções SSO</Button>}
+        {ssoOptions.length > 0 && <>
+          <Choice aria-label="Opção SSO" value={selectedSso} onChange={(event) => setSelectedSso(event.target.value)}>
+            {ssoOptions.map((option) => <option key={option.fingerprint} value={option.fingerprint}>{option.provider} — {option.actionLabel}</option>)}
+          </Choice>
+          {ssoOptions.filter((option) => option.fingerprint === selectedSso).map((option) => <div key={option.fingerprint}>
+            <Message>Destino revisado:</Message><code>{option.destination}</code>
+            {!option.canStart && <Message role="status">{option.manualReason ?? 'Continue manualmente.'}</Message>}
+          </div>)}
+          <Button type="button" disabled={pending || !ssoOptions.find((option) => option.fingerprint === selectedSso)?.canStart || !ssoDocumentId || isRecording}
+            onClick={() => void startSso()}>Confirmar e iniciar SSO</Button>
+        </>}
+        {ssoFlow && ssoFlow.phase !== 'idle' && <Message role="status" aria-live="polite">{ssoFlow.message}</Message>}
+      </>}
       {kind === 'login' && <>
         <Message>Formulário detectado na seção atual. Use apenas dados de teste; o StepScript acionará o botão uma vez após sua confirmação.</Message>
         {loginForms.length > 1 && <Choice aria-label="Formulário de login" value={selectedLogin} onChange={(event) => {
@@ -260,11 +333,11 @@ export function ReplayControls({ stepCount, isRecording }: { stepCount: number; 
       {kind === 'technical-errors' && <Message>Verifica a resposta da página e de recursos HTTP quando o navegador expõe seus status. Não lê o console completo nem respostas de rede ocultas.</Message>}
       {kind === 'saved' && <Message>Reproduz apenas passos compatíveis, após uma segunda confirmação. {unavailableReason}</Message>}
       {isRecording && <Message>Pare a gravação antes de executar qualquer automação.</Message>}
-      <Button type="button" disabled={pending || isRecording || (kind === 'saved' && Boolean(unavailableReason)) || (kind === 'login' && (!selectedForm || !selectedAction || (selectedForm.identifiers.length > 0 && (!selectedIdentifier || !username.trim())) || (selectedForm.passwords.length > 0 && (!selectedPassword || !password))))} onClick={() => { if (kind === 'saved') void prepare(); else void runQuick(); }}>Confirmar e executar</Button>
+      {kind !== 'sso' && <Button type="button" disabled={pending || isRecording || (kind === 'saved' && Boolean(unavailableReason)) || (kind === 'login' && (!selectedForm || !selectedAction || (selectedForm.identifiers.length > 0 && (!selectedIdentifier || !username.trim())) || (selectedForm.passwords.length > 0 && (!selectedPassword || !password))))} onClick={() => { if (kind === 'saved') void prepare(); else void runQuick(); }}>Confirmar e executar</Button>}
       <Button type="button" disabled={pending} onClick={() => { setWizardOpen(false); setUsername(''); setPassword(''); setPreview(undefined); }}>Fechar</Button>
     </Wizard>}
     {automationSteps && <div role="status" aria-live="polite"><Message>Resultado da automação:</Message><ResultList>{automationSteps.map((step, index) => <li key={index}>{step}</li>)}</ResultList></div>}
-    {(automationExport || status?.phase === 'completed') && !running && <div aria-label="Exportar automação">
+    {(automationExport || status?.phase === 'completed' || (ssoFlow && ssoFlow.phase !== 'idle')) && !running && <div aria-label="Exportar automação">
       <Message>Exportar o resultado como teste (valores sensíveis não são incluídos):</Message>
       <Button type="button" onClick={() => void exportResult('playwright')}>Exportar Playwright</Button>{' '}
       <Button type="button" onClick={() => void exportResult('cypress')}>Exportar Cypress</Button>
