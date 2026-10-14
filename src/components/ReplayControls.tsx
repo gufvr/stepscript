@@ -58,6 +58,32 @@ const Choice = styled.select`
   border-radius: 8px;
 `;
 
+const ResultActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+`;
+const ExportButton = styled(Button)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 155px;
+  min-width: 0;
+  min-height: 38px;
+`;
+const GeneratorLogo = styled.img`
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+`;
+const ClearResultsButton = styled(Button)`
+  flex: 0 1 auto;
+  min-height: 38px;
+  color: ${({ theme }) => theme.colors.dangerText};
+`;
+
 async function send(message: ExtensionMessage): Promise<ExtensionResponse> {
   return chrome.runtime.sendMessage(message) as Promise<ExtensionResponse>;
 }
@@ -267,6 +293,22 @@ export function ReplayControls({ stepCount, isRecording }: { stepCount: number; 
   }
 
   const selectedForm = loginForms.find((form) => form.fingerprint === selectedLogin);
+  const hasAutomationResults = automationSteps !== undefined || Boolean(automationExport)
+    || Boolean(status && status.phase !== 'idle') || Boolean(ssoFlow && ssoFlow.phase !== 'idle');
+  const canExportResult = Boolean(automationExport) || status?.phase === 'completed'
+    || Boolean(ssoFlow && ssoFlow.phase !== 'idle');
+
+  function clearAutomationResults() {
+    setAutomationSteps(undefined);
+    setAutomationExport(undefined);
+    setStatus(undefined);
+    setSsoFlow(undefined);
+    setPreview(undefined);
+    setUsername('');
+    setPassword('');
+    setError(undefined);
+    setExportFeedback('Resultados da automação limpos. Os passos gravados foram preservados.');
+  }
 
   return <Card aria-label="Automação de passos">
     <strong>Automação de passos</strong>
@@ -337,10 +379,21 @@ export function ReplayControls({ stepCount, isRecording }: { stepCount: number; 
       <Button type="button" disabled={pending} onClick={() => { setWizardOpen(false); setUsername(''); setPassword(''); setPreview(undefined); }}>Fechar</Button>
     </Wizard>}
     {automationSteps && <div role="status" aria-live="polite"><Message>Resultado da automação:</Message><ResultList>{automationSteps.map((step, index) => <li key={index}>{step}</li>)}</ResultList></div>}
-    {(automationExport || status?.phase === 'completed' || (ssoFlow && ssoFlow.phase !== 'idle')) && !running && <div aria-label="Exportar automação">
-      <Message>Exportar o resultado como teste (valores sensíveis não são incluídos):</Message>
-      <Button type="button" onClick={() => void exportResult('playwright')}>Exportar Playwright</Button>{' '}
-      <Button type="button" onClick={() => void exportResult('cypress')}>Exportar Cypress</Button>
+    {hasAutomationResults && <div aria-label="Ações dos resultados da automação">
+      {canExportResult && !running && <Message>Exportar o resultado como teste (valores sensíveis não são incluídos):</Message>}
+      <ResultActions>
+        {canExportResult && !running && <>
+          <ExportButton type="button" disabled={pending} onClick={() => void exportResult('playwright')}>
+            <GeneratorLogo src="/icons/playwright-logo.svg" alt="" aria-hidden="true" />
+            Exportar Playwright
+          </ExportButton>
+          <ExportButton type="button" disabled={pending} onClick={() => void exportResult('cypress')}>
+            <GeneratorLogo src="/icons/cypress-logo.svg" alt="" aria-hidden="true" />
+            Exportar Cypress
+          </ExportButton>
+        </>}
+        <ClearResultsButton type="button" aria-label="Limpar resultados da automação" disabled={pending || running} onClick={clearAutomationResults}>Limpar</ClearResultsButton>
+      </ResultActions>
     </div>}
     {exportFeedback && <Message role="status">{exportFeedback}</Message>}
     {preview && <div role="dialog" aria-label="Confirmar execução de passos" aria-modal="false">

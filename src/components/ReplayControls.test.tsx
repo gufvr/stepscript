@@ -13,6 +13,43 @@ function renderControls(stepCount: number, isRecording: boolean) {
 describe('ReplayControls wizard', () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it('clears automation results and export actions without modifying recorded steps', async () => {
+    const sendMessage = vi.fn(async (message: { type: string }) => message.type === 'GET_ACTIVE_TAB_CONTEXT'
+      ? { success: true, activeTabContext: { url: 'https://example.com/login', tabId: 1, windowId: 1 } }
+      : message.type === 'RUN_QUICK_AUTOMATION'
+        ? { success: true, automationSteps: ['Example validation error'], automationExport: { kind: 'visible-errors', url: 'https://example.com/login', foundErrors: true } }
+        : { success: true, replayStatus: { phase: 'idle', steps: [] } });
+    const get = vi.fn();
+    const set = vi.fn();
+    vi.stubGlobal('chrome', { runtime: { sendMessage }, permissions: { request: vi.fn(async () => true) }, storage: { local: { get, set } } });
+    renderControls(3, false);
+    fireEvent.click(screen.getByRole('button', { name: /Executar automa/ }));
+    fireEvent.change(screen.getByRole('combobox', { name: /Tipo de automa/ }), { target: { value: 'visible-errors' } });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Confirmar e executar' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar e executar' }));
+    expect(await screen.findByText('Example validation error')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Exportar Playwright' }).querySelector('img')).toHaveAttribute('src', '/icons/playwright-logo.svg');
+    expect(screen.getByRole('button', { name: 'Exportar Cypress' }).querySelector('img')).toHaveAttribute('src', '/icons/cypress-logo.svg');
+    fireEvent.click(screen.getByRole('button', { name: /Limpar resultados/ }));
+    expect(screen.queryByText('Example validation error')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Exportar Playwright' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Exportar Cypress' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Limpar resultados/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/passos gravados foram preservados/);
+    expect(sendMessage).not.toHaveBeenCalledWith({ type: 'CLEAR_RECORDED_STEPS' });
+    expect(get).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('does not clear results during an active replay', async () => {
+    vi.stubGlobal('chrome', { runtime: { sendMessage: vi.fn(async () => ({ success: true,
+      replayStatus: { phase: 'running', steps: [{ index: 0, label: 'Example step', status: 'running' }] },
+    })) } });
+    renderControls(1, false);
+    await waitFor(() => expect(screen.getByRole('button', { name: /Limpar resultados/ })).toBeDisabled());
+    expect(screen.getByText(/Example step/)).toBeInTheDocument();
+  });
+
   it('offers automation without a previous recording', () => {
     vi.stubGlobal('chrome', { runtime: { sendMessage: vi.fn(async () => ({ success: true, replayStatus: { phase: 'idle', steps: [] } })) }, permissions: { request: vi.fn(async () => true) } });
     renderControls(0, false);
