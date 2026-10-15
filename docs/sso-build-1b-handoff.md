@@ -140,3 +140,10 @@ Resultado: **checklist manual não executado; aprovação manual pendente**. A s
 | Ausência de captura de dados externos | Nenhuma página externa, conta, senha, cookie, token ou código MFA foi acessado nesta rodada. | Não houve captura pela execução desta sessão. Isso não comprova o comportamento da extensão em um fluxo SSO real. |
 
 Pré-requisitos para retomar: conectar o Chrome por **Configurações → Computer use**, carregar `dist/` como extensão unpacked e identificar a URL da sandbox SSO autorizada. Todos os casos permanecem pendentes até haver evidência observada no navegador. Somente este handoff foi atualizado; produto, manifest, versão, permissões, assets, schemas e código permanecem intactos. Nenhum pacote, publicação, commit ou push foi realizado.
+
+### Retomada solicitada após ASK e PLAN
+
+- A nova tentativa de conexão direta ao Chrome retornou novamente `Browser is not available: chrome`. O handoff e as instruções disponíveis continuam sem identificar a URL da sandbox SSO autorizada.
+- Nenhum caso do checklist foi executado nesta retomada. A matriz acima permanece pendente; não há nova URL sanitizada observada, status do Side Panel, passo persistido ou export solicitado.
+- Nenhuma autenticação, página externa ou credencial foi acessada nesta retomada. A ausência de captura de senha, cookie, token, MFA, query, fragmento e conteúdo externo pela extensão em um fluxo SSO continua sem comprovação manual.
+- A execução aguarda a conexão do Chrome e o endereço da sandbox. Esta retomada atualizou somente o handoff; não realizou instalação, alteração de configuração, build, pacote, publicação, commit ou push.
