@@ -109,3 +109,34 @@ Para continuar a execução manual, conectar o Chrome pela configuração de Com
 - Não houve login real nem leitura de página externa, cookie, token, senha ou código MFA. O E2E usa exclusivamente resposta sintética para o domínio do provedor.
 - As rotas removidas pela sanitização podem exigir correção manual no teste exportado. Essa escolha evita persistir segmentos arbitrários de URL.
 - A validação manual em um Chrome com ambiente SSO de teste ainda está pendente. Os cinco E2Es usaram Chromium unpacked automatizado e provedor sintético; não houve login real ou teste de MFA/consentimento em conta de teste.
+
+## Tentativa de validação manual da BUILD 1C — 2026-10-14
+
+Resultado: **checklist manual não executado; aprovação manual pendente**. A sessão não dispõe de Chrome conectado nem identifica uma sandbox SSO autorizada. As evidências automatizadas anteriores permanecem históricas e não foram repetidas para representar esta validação manual.
+
+### Preparação e conexão
+
+- `dist/index.html` existe. O manifesto local de `dist/` identifica StepScript `0.5.1`, Manifest V3 e as permissões `activeTab`, `scripting`, `sidePanel`, `storage`, `webNavigation`. Isso verifica arquivos locais, não o carregamento da extensão no Chrome.
+- A seleção do navegador retornou `Browser is not available: chrome`; a listagem de conexões retornou `[]`.
+- O diagnóstico de navegadores encontrou Brave, Microsoft Edge e Vivaldi, sem Google Chrome no resultado. A verificação da extensão não encontrou o diretório padrão de dados do Chrome. O diagnóstico do host não encontrou seu manifesto nem a chave de registro do Chrome. Nenhuma instalação ou reparação foi realizada.
+- O diagnóstico de processo teve acesso negado a `tasklist`; portanto, o estado de execução do Chrome não foi determinado por essa verificação.
+- Nenhum endereço de sandbox SSO ou conta de teste foi identificado nas instruções fornecidas ou no handoff. Credenciais não devem ser enviadas no chat; login, MFA, CAPTCHA e consentimento serão realizados pelo proprietário no ambiente de teste.
+
+### Matriz do checklist solicitado
+
+| Caso | Evidência desta rodada | Status, passos e exports |
+| --- | --- | --- |
+| Detecção e revisão do destino | Nenhuma página de origem de sandbox foi aberta ou inspecionada. | Pendente; provedor e destino não observados. |
+| Sanitização de query, fragmento e caminho | Nenhum caso manual com marcadores fictícios executado. | Pendente; passos e resultados não inspecionados. |
+| Cancelamento antes de confirmar | Interface do Side Panel não acessível nesta sessão. | Pendente; ausência de clique/novo passo não verificada manualmente. |
+| Confirmação única | Nenhuma confirmação SSO realizada. | Pendente; clique e passo inicial não observados. |
+| Login, MFA, CAPTCHA e consentimento | Nenhuma autenticação iniciada; sandbox de identidade não identificada. | Pendente; ações manuais de conta de teste não realizadas. |
+| Retorno na mesma aba | Nenhuma navegação SSO iniciada. | Pendente; status de retorno e passo de navegação não observados. |
+| Popup acompanhado | Nenhum popup SSO aberto. | Pendente; acompanhamento e retorno não observados. |
+| Popup bloqueado ou não acompanhado | Nenhuma tentativa de abertura executada. | Pendente; feedback não observado. |
+| Fechamento das abas | Nenhuma aba de fluxo SSO acessada ou fechada. | Pendente; status manual e encerramento do acompanhamento não observados. |
+| Timeout de 120 segundos | Nenhum fluxo manual iniciou a contagem. | Pendente; prazo, status e ausência de repetição não observados. |
+| Exportação Playwright e Cypress | Nenhum download solicitado nesta rodada. | Pendente; arquivos e TODOs não revisados manualmente. |
+| Ausência de captura de dados externos | Nenhuma página externa, conta, senha, cookie, token ou código MFA foi acessado nesta rodada. | Não houve captura pela execução desta sessão. Isso não comprova o comportamento da extensão em um fluxo SSO real. |
+
+Pré-requisitos para retomar: conectar o Chrome por **Configurações → Computer use**, carregar `dist/` como extensão unpacked e identificar a URL da sandbox SSO autorizada. Todos os casos permanecem pendentes até haver evidência observada no navegador. Somente este handoff foi atualizado; produto, manifest, versão, permissões, assets, schemas e código permanecem intactos. Nenhum pacote, publicação, commit ou push foi realizado.
