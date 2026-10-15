@@ -3,6 +3,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ThemeProvider } from 'styled-components';
 import { theme } from '../styles/theme';
 import { ReplayControls } from './ReplayControls';
+import { createSsoStartStep } from '../automation/createSsoRecordedSteps';
+
+const downloadTextFile = vi.hoisted(() => vi.fn());
+vi.mock('../services/downloadTextFile', () => ({ downloadTextFile }));
 
 function renderControls(stepCount: number, isRecording: boolean) {
   return render(<ThemeProvider theme={theme}>
@@ -11,7 +15,7 @@ function renderControls(stepCount: number, isRecording: boolean) {
 }
 
 describe('ReplayControls wizard', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => { vi.unstubAllGlobals(); downloadTextFile.mockClear(); });
 
   it('clears automation results and export actions without modifying recorded steps', async () => {
     const sendMessage = vi.fn(async (message: { type: string }) => message.type === 'GET_ACTIVE_TAB_CONTEXT'
@@ -130,6 +134,34 @@ describe('ReplayControls wizard', () => {
       fingerprint: option.fingerprint, destination: option.destination, documentId: 'sso-document',
     } }));
     expect(await screen.findByText('Conclua manualmente.')).toBeInTheDocument();
+  });
+
+  it('exports a confirmed SSO source step for both frameworks with manual external stages', async () => {
+    const option = { fingerprint: 'google-action', provider: 'Google', actionLabel: 'Continue with Google',
+      destination: 'https://accounts.google.com/o/oauth2/auth', actionSelector: 'a#google', actionTagName: 'a', canStart: true };
+    const startStep = createSsoStartStep('https://example.com/login/QA_FAKE_CODE?state=secret', option);
+    const sendMessage = vi.fn(async (message: { type: string }) => message.type === 'GET_ACTIVE_TAB_CONTEXT'
+      ? { success: true, activeTabContext: { url: 'https://example.com/login', tabId: 1, windowId: 1 } }
+      : message.type === 'INSPECT_SSO_AUTOMATION'
+        ? { success: true, ssoOptions: [option], ssoDocumentId: 'sso-document' }
+        : message.type === 'START_SSO_AUTOMATION'
+          ? { success: true, automationSteps: ['Início registrado'] }
+          : message.type === 'GET_SSO_FLOW_STATUS'
+            ? { success: true, ssoFlow: { phase: 'returned', message: 'Retorno observado', startStep } }
+            : { success: true, replayStatus: { phase: 'idle', steps: [] } });
+    vi.stubGlobal('chrome', { runtime: { sendMessage }, permissions: { request: vi.fn(async () => true) } });
+    renderControls(0, false);
+    fireEvent.click(screen.getByRole('button', { name: /Executar automa/ }));
+    fireEvent.change(screen.getByRole('combobox', { name: /Tipo de automa/ }), { target: { value: 'sso' } });
+    fireEvent.click(await screen.findByRole('button', { name: /Analisar op/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar e iniciar SSO' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Exportar Playwright' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Exportar Cypress' }));
+    await waitFor(() => expect(downloadTextFile).toHaveBeenCalledTimes(2));
+    for (const [download] of downloadTextFile.mock.calls) {
+      expect(download.content).toContain('TODO StepScript: autenticação no provedor externo');
+      expect(download.content).not.toMatch(/QA_FAKE_CODE|state=secret|accounts\.google/);
+    }
   });
 
   it('keeps an ambiguous SSO destination manual-only', async () => {

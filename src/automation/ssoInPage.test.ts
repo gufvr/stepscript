@@ -48,4 +48,14 @@ describe('assisted SSO page inspection', () => {
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ width: 100, height: 24 } as DOMRect);
     expect(ssoInPage('inspect', location.href).ssoOptions).toEqual([]);
   });
+
+  it('removes dynamic path segments from reviewed destinations and reports a failed click', () => {
+    document.body.innerHTML = '<button id="google" data-url="https://accounts.google.com/o/oauth2/v2/auth/QA_FAKE_CODE?state=secret">Continue with Google</button>';
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ width: 100, height: 24 } as DOMRect);
+    const option = ssoInPage('inspect', location.href).ssoOptions![0];
+    expect(option.destination).toBe('https://accounts.google.com/o/oauth2/v2/auth');
+    expect(JSON.stringify(option)).not.toMatch(/QA_FAKE_CODE|secret/);
+    vi.spyOn(document.getElementById('google')!, 'click').mockImplementation(() => { throw new Error('Synthetic click failure'); });
+    expect(ssoInPage('start', location.href, option.fingerprint, option.destination)).toMatchObject({ success: false });
+  });
 });

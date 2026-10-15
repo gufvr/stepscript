@@ -41,9 +41,18 @@ export function ssoInPage(
     try {
       const url = new URL(value, location.href);
       if (url.protocol !== 'https:' || url.username || url.password) return '';
+      const staticSegments = new Set(['account', 'accounts', 'auth', 'authorize', 'callback', 'forms', 'idp', 'login',
+        'oauth', 'oauth2', 'o', 'oidc', 'openid', 'protocol', 'saml', 'signin', 'sign-in', 'sso', 'sso.html', 'v1', 'v2', 'v3']);
+      const parts: string[] = [];
+      for (const raw of url.pathname.split('/').filter(Boolean)) {
+        let decoded: string;
+        try { decoded = decodeURIComponent(raw); } catch { break; }
+        if (!staticSegments.has(decoded.toLowerCase())) break;
+        parts.push(decoded.toLowerCase());
+      }
+      url.pathname = `/${parts.join('/')}`;
       url.search = '';
       url.hash = '';
-      url.pathname = url.pathname.replace(/\/(?:[a-f\d]{32,}|[a-z\d_-]{40,}|[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}|[^/]+@[^/]+)(?=\/|$)/ig, '/[redacted]');
       return url.toString();
     } catch { return ''; }
   };
@@ -102,6 +111,6 @@ export function ssoInPage(
   if (!chosen.canStart) return { success: false, error: chosen.manualReason ?? 'Este fluxo precisa ser iniciado manualmente.' };
   const action = document.querySelector(chosen.actionSelector);
   if (!(action instanceof HTMLElement) || !visible(action)) return { success: false, error: 'A opção SSO não está mais disponível.' };
-  action.click();
+  try { action.click(); } catch { return { success: false, error: 'O clique SSO falhou; nenhuma etapa foi registrada.' }; }
   return { success: true, ssoOptions: [chosen], automationSteps: [`Início do SSO ${chosen.provider} acionado uma vez. Conclua a autenticação manualmente e volte ao site de origem.`] };
 }

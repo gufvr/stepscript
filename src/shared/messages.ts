@@ -143,5 +143,5 @@ export interface ExtensionResponse {
   loginDocumentId?: string;
   ssoOptions?: SsoAutomationOption[];
   ssoDocumentId?: string;
-  ssoFlow?: { phase: 'idle' | 'started' | 'external' | 'returned' | 'manual'; message: string };
+  ssoFlow?: { phase: 'idle' | 'started' | 'external' | 'returned' | 'manual'; message: string; startStep?: RecordedClick };
 }

@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import type { ExtensionMessage, ExtensionResponse } from '../shared/messages';
 import type { ReplayStatus, ReplayStepResult } from '../replay/replaySession';
 import { generateAutomationExport, type AutomationFramework } from '../automation/automationExport';
+import { generateSsoExport } from '../automation/ssoExport';
 import { generatePlaywrightTest } from '../shared/playwright/generatePlaywrightTest';
 import { generateCypressTest } from '../shared/cypress/generateCypressTest';
 import { downloadTextFile } from '../services/downloadTextFile';
@@ -280,6 +281,7 @@ export function ReplayControls({ stepCount, isRecording }: { stepCount: number; 
     try {
       let code: string;
       if (automationExport) code = generateAutomationExport(framework, automationExport);
+      else if (ssoFlow?.startStep) code = generateSsoExport(framework, ssoFlow.startStep);
       else if (status?.phase === 'completed') {
         const local = await chrome.storage.local.get('recordedSteps');
         const steps = Array.isArray(local.recordedSteps) ? local.recordedSteps : [];
@@ -296,7 +298,7 @@ export function ReplayControls({ stepCount, isRecording }: { stepCount: number; 
   const hasAutomationResults = automationSteps !== undefined || Boolean(automationExport)
     || Boolean(status && status.phase !== 'idle') || Boolean(ssoFlow && ssoFlow.phase !== 'idle');
   const canExportResult = Boolean(automationExport) || status?.phase === 'completed'
-    || Boolean(ssoFlow && ssoFlow.phase !== 'idle');
+    || Boolean(ssoFlow?.startStep);
 
   function clearAutomationResults() {
     setAutomationSteps(undefined);

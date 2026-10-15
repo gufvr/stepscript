@@ -12,7 +12,8 @@ export interface SsoAutomationContext {
 
 export async function runSsoAutomation(
   request: { kind: 'inspect' } | { kind: 'start'; fingerprint: string; destination: string; documentId: string },
-  beforeStart?: (context: SsoAutomationContext, option: SsoAutomationOption) => Promise<void>,
+  afterStart?: (context: SsoAutomationContext, option: SsoAutomationOption) => Promise<void>,
+  recordingStartPending?: () => boolean,
 ): Promise<ExtensionResponse> {
   if (getReplayStatus().replayStatus?.phase === 'running') return { success: false, error: 'Interrompa a execução em andamento.' };
   const context = await validateActiveTabContext();
@@ -44,12 +45,32 @@ export async function runSsoAutomation(
   const chosen = options.find((option) => option.fingerprint === request.fingerprint && option.destination === request.destination);
   if (!chosen) return { success: false, error: 'A opção SSO ou o destino mudou. Analise novamente antes de iniciar.' };
   if (!chosen.canStart) return { success: false, error: chosen.manualReason ?? 'Este fluxo precisa ser iniciado manualmente.' };
-  await beforeStart?.(executionContext, chosen);
-  const started = await chrome.scripting.executeScript({
-    target: { tabId: context.tabId, documentIds: [frame.documentId] }, func: ssoInPage,
-    args: ['start', context.url, request.fingerprint, request.destination],
-  });
+  const latestState = await chrome.storage.local.get('recordingState');
+  if ((latestState.recordingState as { isRecording?: boolean } | undefined)?.isRecording)
+    return { success: false, error: 'A gravação começou durante a preparação SSO. Pare a gravação e analise novamente.' };
+  const current = await validateActiveTabContext();
+  const latestFrame = await chrome.webNavigation.getFrame({ tabId: context.tabId, frameId: 0 });
+  if (current?.tabId !== context.tabId || current.url !== context.url || latestFrame?.documentId !== frame.documentId
+    || latestFrame.documentLifecycle !== 'active' || latestFrame.url !== context.url)
+    return { success: false, error: 'A aba ou documento mudou. Reabra o StepScript e analise novamente.' };
+  if (recordingStartPending?.())
+    return { success: false, error: 'Uma gravação foi solicitada durante a preparação SSO. Analise novamente depois de pará-la.' };
+  let started: chrome.scripting.InjectionResult<ExtensionResponse>[];
+  try {
+    started = await chrome.scripting.executeScript({
+      target: { tabId: context.tabId, documentIds: [frame.documentId] }, func: ssoInPage,
+      args: ['start', context.url, request.fingerprint, request.destination],
+    });
+  } catch {
+    return { success: false, error: 'Não foi possível confirmar o clique SSO. Verifique o site manualmente; nenhum passo foi salvo.' };
+  }
   const result = started[0]?.result;
   if (!result?.success) return result ?? { success: false, error: 'Não foi possível iniciar a opção SSO.' };
+  try {
+    await afterStart?.(executionContext, chosen);
+  } catch {
+    return { ...result, automationSteps: [...(result.automationSteps ?? []),
+      'O clique ocorreu, mas não foi possível registrar o passo. Confira o fluxo manualmente.'] };
+  }
   return result;
 }

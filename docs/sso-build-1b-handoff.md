@@ -57,7 +57,7 @@ A revisão confirmou que o código SSO só injeta a inspeção/ação no documen
 
 ### PLAN — checklist manual definido
 
-Build unpacked: `D:\www\projs\qa\flowsnap\dist`. Manifest: StepScript `0.5.1`, com as permissões existentes. Usar exclusivamente página de teste e valores fictícios; login real requer ambiente de teste previamente definido.
+Build unpacked: `dist/`. Manifest: StepScript `0.5.1`, com as permissões existentes. Usar exclusivamente página de teste e valores fictícios; login real requer ambiente de teste previamente definido.
 
 | Caso | Procedimento e resultado esperado | Estado nesta rodada |
 | --- | --- | --- |
@@ -84,3 +84,28 @@ Build unpacked: `D:\www\projs\qa\flowsnap\dist`. Manifest: StepScript `0.5.1`, c
 | Git | `git diff --check` aprovado. Sem commit ou push. |
 
 Para continuar a execução manual, conectar o Chrome pela configuração de Computer use do aplicativo e utilizar um ambiente SSO de teste identificado. Os achados de revisão devem ser tratados em uma BUILD corretiva separada, preservando a divisão de escopo desta rodada.
+
+## BUILD 1C — correções SSO (2026-10-14)
+
+- URLs de início, retorno e revisão SSO passam por lista conservadora de segmentos estáticos. Query e fragmento são removidos; o caminho é truncado no primeiro segmento desconhecido, inclusive códigos fictícios em `/auth/callback/QA_FAKE_CODE_123`. Rotas legítimas fora da lista exigem ajuste manual da URL inicial no teste exportado.
+- O clique é revalidado no documento autorizado. O registro existente de clique só é salvo depois de a injeção confirmar a ação; falha de DOM, documento ou injeção não cria passo. Se a navegação interromper a resposta da injeção, a ocorrência do clique não pode ser provada e o resultado fica para conferência manual.
+- Início SSO e início de gravação são serializados. Solicitação de gravação recebida durante a preparação cancela o SSO antes do clique. A gravação segue seu fluxo próprio.
+- O Side Panel exporta Playwright e Cypress a partir do clique SSO confirmado. Os arquivos usam os geradores existentes para a ação no site de origem e incluem TODOs para autenticação externa, MFA, CAPTCHA, consentimento, retorno e verificação final. Não incluem destino do provedor nem credenciais.
+- Fechamento de aba acompanhada encerra o status em modo manual. Se não houver retorno em 120 segundos, a próxima consulta de status o marca como manual; o painel consulta enquanto o estado estiver em andamento. Popup que não puder ser acompanhado também chega a esse timeout. Não existe repetição automática.
+
+### Evidências
+
+| Verificação | Resultado |
+| --- | --- |
+| Regressões unitárias e integração | Sanitização de caminho, clique falho, corrida com gravação, registro após confirmação, exportação de ambos os formatos, fechamento, timeout, retorno tardio e falha de armazenamento aprovados em testes focados. |
+| E2E SSO em Chrome unpacked de teste | Cinco cenários exibiram `ok`, inclusive link que realmente navega para resposta local sintética do domínio do provedor, cancelamento antes de confirmar, ação removida, fechamento de aba e downloads Playwright/Cypress. O runner ficou preso na finalização e foi interrompido; não há exit code de aprovação do comando. |
+| Suíte completa | `npm test -- --maxWorkers=2`: 73 arquivos, 530 testes aprovados após a correção da referência absoluta nesta página. |
+| Lint, build e diff | `npm run lint`, `npm run build` e `git diff --check` aprovados. O build inclui a verificação do gravador. Nenhum ZIP criado. |
+
+### Limites remanescentes
+
+- O acompanhamento SSO é apenas em memória. Reinício do service worker durante o fluxo perde esse status; os passos já salvos continuam no armazenamento atual.
+- Um retorno observado significa apenas navegação para a origem autorizada, não comprovação de autenticação bem-sucedida. O teste deve receber verificações finais revisadas pelo usuário.
+- Não houve login real nem leitura de página externa, cookie, token, senha ou código MFA. O E2E usa exclusivamente resposta sintética para o domínio do provedor.
+- As rotas removidas pela sanitização podem exigir correção manual no teste exportado. Essa escolha evita persistir segmentos arbitrários de URL.
+- A validação manual em um Chrome com ambiente SSO de teste ainda está pendente. Os cinco E2Es usaram Chromium unpacked automatizado e provedor sintético; não houve login real ou teste de MFA/consentimento em conta de teste.

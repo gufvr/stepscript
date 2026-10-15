@@ -30,6 +30,8 @@ const tabsActivated = vi.fn();
 const tabsRemoved = vi.fn();
 const tabsUpdated = vi.fn();
 const tabsQuery = vi.fn();
+const getFrame = vi.fn();
+const permissionsContains = vi.fn();
 
 let localStorageData: Record<string, unknown>;
 let sessionStorageData: Record<string, unknown>;
@@ -227,6 +229,9 @@ describe('extension action', () => {
     tabsRemoved.mockReset();
     tabsUpdated.mockReset();
     tabsQuery.mockReset();
+    getFrame.mockReset();
+    permissionsContains.mockReset();
+    permissionsContains.mockResolvedValue(true);
     tabsQuery.mockResolvedValue([{ id: 21, windowId: 4, url: 'https://example.com/form' }]);
     localStorageData = {};
     sessionStorageData = {};
@@ -271,6 +276,7 @@ describe('extension action', () => {
         local: { get: getLocalStorage, set: setLocalStorage },
       },
       scripting: { executeScript },
+      permissions: { contains: permissionsContains },
       tabs: {
         sendMessage: tabsSendMessage, query: tabsQuery,
         onActivated: { addListener: tabsActivated },
@@ -278,6 +284,7 @@ describe('extension action', () => {
         onUpdated: { addListener: tabsUpdated },
       },
       webNavigation: {
+        getFrame,
         onCommitted: { addListener: navigationCommitted },
         onDOMContentLoaded: { addListener: navigationDOMContentLoaded },
         onCompleted: { addListener: navigationCompleted },
@@ -287,6 +294,86 @@ describe('extension action', () => {
     });
 
     await import('./background');
+  });
+
+  function configureSsoStart(sourceUrl = 'https://example.com/login') {
+    sessionStorageData.activeTabContext = { tabId: 21, windowId: 4, url: sourceUrl };
+    tabsQuery.mockResolvedValue([{ id: 21, windowId: 4, url: sourceUrl, active: true }]);
+    getFrame.mockResolvedValue({ url: sourceUrl, documentId: 'doc-sso', documentLifecycle: 'active' });
+    const option = { fingerprint: 'reviewed', provider: 'Google', actionLabel: 'Continue with Google',
+      destination: 'https://accounts.google.com/o/oauth2/v2/auth', actionSelector: 'a#sso', actionTagName: 'a', canStart: true };
+    executeScript.mockImplementation(async ({ args }: { args: string[] }) => args[0] === 'inspect'
+      ? [{ result: { success: true, ssoOptions: [option] } }]
+      : [{ result: { success: true, automationSteps: ['Clique confirmado'] } }]);
+    return { option, sourceUrl };
+  }
+
+  it('saves a sanitized SSO step after the confirmed click and updates closure and timeout status', async () => {
+    const { option } = configureSsoStart('https://example.com/login/QA_FAKE_CODE?state=secret');
+    const result = await dispatchMessage({ type: 'START_SSO_AUTOMATION', payload: {
+      fingerprint: option.fingerprint, destination: option.destination, documentId: 'doc-sso',
+    } }) as { success: boolean };
+    expect(result.success).toBe(true);
+    expect(localStorageData.recordedSteps).toHaveLength(1);
+    expect(JSON.stringify(localStorageData.recordedSteps)).not.toMatch(/QA_FAKE_CODE|state=secret/);
+    expect(executeScript.mock.invocationCallOrder[1]).toBeLessThan(setLocalStorage.mock.invocationCallOrder.at(-1)!);
+    const initial = await dispatchMessage({ type: 'GET_SSO_FLOW_STATUS' }) as { ssoFlow: { startStep: { type: string }; phase: string } };
+    expect(initial.ssoFlow.startStep.type).toBe('click');
+    const remove = tabsRemoved.mock.calls[0][0];
+    remove(21);
+    expect((await dispatchMessage({ type: 'GET_SSO_FLOW_STATUS' }) as typeof initial).ssoFlow.phase).toBe('manual');
+  });
+
+  it('times out an unreturned SSO flow without retrying the action', async () => {
+    const { option } = configureSsoStart();
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+    try {
+      await dispatchMessage({ type: 'START_SSO_AUTOMATION', payload: {
+        fingerprint: option.fingerprint, destination: option.destination, documentId: 'doc-sso',
+      } });
+      const calls = executeScript.mock.calls.length;
+      now.mockReturnValue(122_000);
+      const status = await dispatchMessage({ type: 'GET_SSO_FLOW_STATUS' }) as { ssoFlow: { phase: string; message: string } };
+      expect(status.ssoFlow).toMatchObject({ phase: 'manual' });
+      expect(status.ssoFlow.message).toMatch(/prazo/);
+      expect(executeScript).toHaveBeenCalledTimes(calls);
+      const navigation = navigationCommitted.mock.calls[0][0];
+      navigation({ tabId: 21, frameId: 0, url: 'https://accounts.google.com/o/oauth2/v2/auth', timeStamp: 122_001 });
+      navigation({ tabId: 21, frameId: 0, url: 'https://example.com/auth/callback/QA_FAKE_CODE?code=secret', timeStamp: 122_002 });
+      expect((await dispatchMessage({ type: 'GET_SSO_FLOW_STATUS' }) as typeof status).ssoFlow.phase).toBe('manual');
+      expect(localStorageData.recordedSteps).toHaveLength(1);
+    } finally { now.mockRestore(); }
+  });
+
+  it('does not reuse an older SSO flow if a confirmed click cannot be saved', async () => {
+    const { option } = configureSsoStart();
+    const payload = { fingerprint: option.fingerprint, destination: option.destination, documentId: 'doc-sso' };
+    await dispatchMessage({ type: 'START_SSO_AUTOMATION', payload });
+    setLocalStorage.mockRejectedValueOnce(new Error('Storage unavailable'));
+    const result = await dispatchMessage({ type: 'START_SSO_AUTOMATION', payload }) as { success: boolean; automationSteps: string[] };
+    expect(result.success).toBe(true);
+    expect(result.automationSteps.at(-1)).toMatch(/não foi possível registrar/);
+    const status = await dispatchMessage({ type: 'GET_SSO_FLOW_STATUS' }) as { ssoFlow: { phase: string } };
+    expect(status.ssoFlow.phase).toBe('idle');
+  });
+
+  it('cancels SSO if recording is requested while SSO inspection is pending', async () => {
+    const { option, sourceUrl } = configureSsoStart();
+    let finishInspection: ((value: unknown) => void) | undefined;
+    executeScript.mockImplementation(async ({ args }: { args: string[] }) => {
+      if (args?.[0] === 'inspect') return await new Promise((resolve) => { finishInspection = resolve; });
+      if (args?.[0] === 'start') return [{ result: { success: true } }];
+      return undefined;
+    });
+    const sso = dispatchMessage({ type: 'START_SSO_AUTOMATION', payload: {
+      fingerprint: option.fingerprint, destination: option.destination, documentId: 'doc-sso',
+    } });
+    await vi.waitFor(() => expect(finishInspection).toBeDefined());
+    const recording = dispatchMessage({ type: 'START_RECORDING', payload: { tabId: 21, origin: 'https://example.com', url: sourceUrl } });
+    finishInspection!([{ result: { success: true, ssoOptions: [option] } }]);
+    expect((await sso as { success: boolean }).success).toBe(false);
+    expect((await recording as { success: boolean }).success).toBe(true);
+    expect(executeScript.mock.calls.filter(([injection]) => injection.args?.[0] === 'start')).toHaveLength(0);
   });
 
   it('begins context persistence before opening synchronously while the write is pending', () => {

@@ -1,7 +1,7 @@
 import type { SsoAutomationOption } from '../shared/messages';
 import type { RecordedClick, SelectorAnalysis } from '../shared/recordingTypes';
 import { createClickDescription } from '../shared/descriptions/createClickDescription';
-import { safeAutomationUrl } from './safeAutomationUrl';
+import { safeSsoUrl } from './safeSsoUrl';
 
 export function createSsoStartStep(url: string, option: SsoAutomationOption): RecordedClick {
   const value = option.actionSelector;
@@ -11,6 +11,6 @@ export function createSsoStartStep(url: string, option: SsoAutomationOption): Re
     alternatives: [],
   };
   const element = { tagName: option.actionTagName, text: option.actionLabel.slice(0, 200) };
-  return { schemaVersion: 4, id: crypto.randomUUID(), type: 'click', url: safeAutomationUrl(url),
+  return { schemaVersion: 4, id: crypto.randomUUID(), type: 'click', url: safeSsoUrl(url),
     timestamp: Date.now(), selectors, element, description: createClickDescription({ selectors, element }) };
 }
