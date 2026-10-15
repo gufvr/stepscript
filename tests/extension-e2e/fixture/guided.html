@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>StepScript guided recording test</title></head>
+<body>
+  <h1>Formulário de teste em etapas</h1>
+  <div id="first-stage">
+    <label>E-mail de teste <input id="email" data-testid="guided-email" type="email"></label>
+    <label>Senha de teste <input id="password" data-testid="guided-password" type="password"></label>
+    <button id="next-stage" type="button" data-testid="guided-next">Próxima etapa</button>
+  </div>
+  <div id="second-stage" hidden>
+    <label>Cidade <input id="city" data-testid="guided-city"></label>
+    <button id="remove-city" type="button">Remover campo dinâmico</button>
+  </div>
+  <a data-testid="guided-navigation" href="/next.html">Outra página</a>
+  <script>
+    document.querySelector('#next-stage').addEventListener('click', () => {
+      document.querySelector('#first-stage').hidden = true;
+      document.querySelector('#second-stage').hidden = false;
+    });
+    document.querySelector('#remove-city').addEventListener('click', () => document.querySelector('#city').remove());
+  </script>
+</body>
+</html>

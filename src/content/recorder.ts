@@ -13,6 +13,7 @@ import type {
   InteractionKey,
 } from '../shared/recordingTypes';
 import { getImplicitRole, normalizeText } from './elementSemantics';
+import { createGuidedHighlight } from './guidedHighlight';
 import {
   captureColorValue,
   isColorControl,
@@ -884,6 +885,9 @@ export function installRecorder() {
   const controller = createRecorderController((message) =>
     chrome.runtime.sendMessage(message),
   );
+  const guidedHighlight = createGuidedHighlight(() => {
+    void chrome.runtime.sendMessage({ type: 'GUIDED_TARGET_LOST' }).catch(() => undefined);
+  });
 
   document.addEventListener('click', controller.handleClick, true);
   document.addEventListener('keydown', controller.handleKeyDown, true);
@@ -903,6 +907,14 @@ export function installRecorder() {
     }
     if (message.type === 'DEACTIVATE_CLICK_RECORDER') {
       controller.setActive(false);
+      guidedHighlight.clear();
+      sendResponse({ success: true });
+    }
+    if (message.type === 'SHOW_GUIDED_HIGHLIGHT') {
+      sendResponse({ success: guidedHighlight.show(message.payload) });
+    }
+    if (message.type === 'CLEAR_GUIDED_HIGHLIGHT') {
+      guidedHighlight.clear();
       sendResponse({ success: true });
     }
     if (message.type === 'ACTIVATE_ELEMENT_VISIBILITY_PICKER') {

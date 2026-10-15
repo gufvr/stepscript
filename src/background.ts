@@ -39,6 +39,9 @@ import { runSsoAutomation, type SsoAutomationContext } from './automation/ssoAut
 import { createSsoStartStep } from './automation/createSsoRecordedSteps';
 import type { SsoAutomationOption } from './shared/messages';
 import { safeSsoUrl } from './automation/safeSsoUrl';
+import { acceptGuidedCapture, controlGuidedRecording, guidedNavigation, guidedPaused, guidedTabClosed,
+  guidedStatus, guidedTargetLost, guidedTabActivated, highlightGuidedStep,
+  resetGuidedRecording, stopGuidedRecording } from './guided/guidedRecording';
 
 const RECORDING_STATE_KEY = 'recordingState';
 const RECORDED_STEPS_KEY = 'recordedSteps';
@@ -313,10 +316,12 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
+  guidedTabActivated(tabId, windowId);
   interruptReplay('A aba ativa mudou; execução interrompida.');
   void invalidateContextForActivation(tabId, windowId).catch(() => undefined);
 });
 chrome.tabs.onRemoved.addListener((tabId) => {
+  guidedTabClosed(tabId);
   interruptReplay('A aba foi fechada; execução interrompida.', tabId);
   if (ssoFlow?.sourceTabId === tabId || ssoFlow?.watchedTabs.has(tabId)) {
     ssoFlow.watchedTabs.delete(tabId);
@@ -333,6 +338,7 @@ chrome.tabs.onCreated?.addListener((tab) => {
 });
 chrome.tabs.onUpdated.addListener((tabId, changes) => {
   if (changes.url) {
+    guidedNavigation(tabId, changes.url);
     interruptReplay('A URL mudou; execução interrompida.', tabId);
     void updateActiveTabContextUrl(tabId, changes.url).catch(() => undefined);
   }
@@ -342,6 +348,7 @@ async function startRecording(
   tabId: number,
   origin: string,
   url: string,
+  guided = false,
 ): Promise<ExtensionResponse> {
   if (getReplayStatus().replayStatus?.phase === 'running') {
     return { success: false, error: 'Interrompa a execução antes de iniciar uma gravação.' };
@@ -368,6 +375,7 @@ async function startRecording(
       [RECORDED_STEPS_KEY]: [],
     });
     await setElementVisibilityPickerState({ active: false, updatedAt: Date.now() });
+    await resetGuidedRecording(tabId, origin, context.windowId, guided);
 
     return { success: true };
   } catch {
@@ -379,6 +387,7 @@ async function startRecording(
 }
 
 async function stopRecording(): Promise<ExtensionResponse> {
+  await stopGuidedRecording();
   const result = await chrome.storage.local.get(RECORDING_STATE_KEY);
   const currentState = result[RECORDING_STATE_KEY] as RecordingState | undefined;
 
@@ -407,6 +416,7 @@ async function stopRecording(): Promise<ExtensionResponse> {
 async function startElementPicker(
   mode: ElementAssertionPickerMode,
 ): Promise<ExtensionResponse> {
+  if (await guidedPaused()) return { success: false, error: 'Retome a gravação guiada antes de selecionar um elemento.' };
   const result = await chrome.storage.local.get(RECORDING_STATE_KEY);
   const state = result[RECORDING_STATE_KEY] as RecordingState | undefined;
   if (
@@ -531,6 +541,7 @@ async function addElementVisibilityAssertion(
   const storedSteps = local[RECORDED_STEPS_KEY];
   const steps: RecordedStep[] = Array.isArray(storedSteps) ? storedSteps : [];
   await chrome.storage.local.set({ [RECORDED_STEPS_KEY]: [...steps, assertion] });
+  await highlightGuidedStep(assertion, sender.documentId).catch(() => undefined);
 
   const pickerState: ElementVisibilityPickerState = {
     active: false,
@@ -592,6 +603,7 @@ async function addElementTextAssertion(
   const storedSteps = local[RECORDED_STEPS_KEY];
   const steps: RecordedStep[] = Array.isArray(storedSteps) ? storedSteps : [];
   await chrome.storage.local.set({ [RECORDED_STEPS_KEY]: [...steps, assertion] });
+  await highlightGuidedStep(assertion, sender.documentId).catch(() => undefined);
 
   const pickerState: ElementVisibilityPickerState = {
     active: false,
@@ -616,12 +628,14 @@ async function appendRecordedStep(
   if (!state?.isRecording || state.tabId !== sender.tab?.id) {
     return { success: false };
   }
+  if (!(await acceptGuidedCapture(sender, message.payload.url))) return { success: false };
 
   const storedSteps = result[RECORDED_STEPS_KEY];
   const steps = Array.isArray(storedSteps) ? storedSteps : [];
   await chrome.storage.local.set({
     [RECORDED_STEPS_KEY]: [...steps, message.payload],
   });
+  await highlightGuidedStep(message.payload, sender.documentId).catch(() => undefined);
 
   return { success: true };
 }
@@ -947,6 +961,11 @@ async function appendSameDocumentNavigation(
 
   if (state.currentUrl === details.url) return;
 
+  if (await guidedPaused()) {
+    await chrome.storage.local.set({ [RECORDING_STATE_KEY]: { ...state, currentUrl: details.url } });
+    return;
+  }
+
   const storedSteps = result[RECORDED_STEPS_KEY];
   const steps: RecordedStep[] = Array.isArray(storedSteps) ? storedSteps : [];
   const navigation = createRecordedNavigation(
@@ -1004,6 +1023,11 @@ async function appendCommittedDocumentNavigation(
   };
   delete nextState.recorderDocumentId;
 
+  if (await guidedPaused()) {
+    await chrome.storage.local.set({ [RECORDING_STATE_KEY]: nextState });
+    return;
+  }
+
   if (!state.currentUrl) {
     await chrome.storage.local.set({ [RECORDING_STATE_KEY]: nextState });
     return;
@@ -1030,6 +1054,7 @@ function recordCommittedDocumentNavigation(
 }
 
 async function resumeRecorderInDocument(details: ReadyWebNavigationDetails) {
+  if (await guidedPaused()) return;
   const result = await chrome.storage.local.get(RECORDING_STATE_KEY);
   const state = result[RECORDING_STATE_KEY] as RecordingState | undefined;
 
@@ -1069,6 +1094,7 @@ function recordDocumentReady(details: ReadyWebNavigationDetails) {
 chrome.webNavigation.onCommitted.addListener((details) => {
   observeSsoNavigation(details);
   if (details.frameId === 0) {
+    guidedNavigation(details.tabId, details.url);
     interruptReplay('O documento mudou; execução interrompida.', details.tabId);
     void updateActiveTabContextUrl(details.tabId, details.url).catch(() => undefined);
   }
@@ -1090,6 +1116,7 @@ chrome.webNavigation.onCompleted.addListener((details) => {
 
 chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
   if (details.frameId === 0) {
+    guidedNavigation(details.tabId, details.url);
     interruptReplay('A URL mudou; execução interrompida.', details.tabId);
     void updateActiveTabContextUrl(details.tabId, details.url).catch(() => undefined);
   }
@@ -1098,6 +1125,7 @@ chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
 
 chrome.webNavigation.onReferenceFragmentUpdated.addListener((details) => {
   if (details.frameId === 0) {
+    guidedNavigation(details.tabId, details.url);
     interruptReplay('A URL mudou; execução interrompida.', details.tabId);
     void updateActiveTabContextUrl(details.tabId, details.url).catch(() => undefined);
   }
@@ -1111,6 +1139,12 @@ chrome.runtime.onMessage.addListener(
     sendResponse: (response: ExtensionResponse) => void,
   ) => {
     const handleMessage = async () => {
+      if (message.type === 'GET_GUIDED_RECORDING_STATUS') return guidedStatus();
+      if (message.type === 'CONTROL_GUIDED_RECORDING') return enqueueRecordedStepOperation(async () => {
+        if (message.payload.action !== 'resume') await cancelElementVisibilityPicker();
+        return controlGuidedRecording(message.payload.action, message.payload.stepId);
+      });
+      if (message.type === 'GUIDED_TARGET_LOST') return guidedTargetLost(sender);
       if (message.type === 'INSPECT_LOGIN_AUTOMATION') return runQuickAutomation({ kind: 'inspect-login' });
       if (message.type === 'INSPECT_SSO_AUTOMATION') return runSsoAutomation({ kind: 'inspect' });
       if (message.type === 'START_SSO_AUTOMATION') return enqueueRecordedStepOperation(() =>
@@ -1150,6 +1184,7 @@ chrome.runtime.onMessage.addListener(
               message.payload.tabId,
               message.payload.origin,
               message.payload.url,
+              message.payload.guided,
             ),
           );
         } finally { pendingRecordingStarts -= 1; }

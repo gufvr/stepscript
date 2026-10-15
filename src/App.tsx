@@ -1,4 +1,6 @@
 import styled from 'styled-components';
+import { useState } from 'react';
+import { GuidedRecordingControls } from './components/GuidedRecordingControls';
 import { AppFooter } from './components/AppFooter';
 import { BrandHeader } from './components/BrandHeader';
 import { RecordedStepsList } from './components/RecordedStepsList';
@@ -54,6 +56,8 @@ const ErrorMessage = styled.p`
 `;
 
 export function App() {
+  const [guided, setGuided] = useState(false);
+  const [guidedPaused, setGuidedPaused] = useState(false);
   const { isRecording, isLoading, error, toggleRecording } =
     useRecordingState();
   const {
@@ -76,21 +80,29 @@ export function App() {
       <BrandHeader onClose={closeSidePanel} />
       <Content>
         <RecordingCard aria-label="Controle de gravação">
-          <StatusBanner isRecording={isRecording} isLoading={isLoading} />
+          <StatusBanner isRecording={isRecording} isLoading={isLoading} isPaused={guidedPaused} />
           <StepCount>{stepCountLabel}</StepCount>
           {error && <ErrorMessage role="alert">{error}</ErrorMessage>}
           <PrivacyNotice />
+          <label>
+            <input type="checkbox" checked={guided} disabled={isRecording || isLoading}
+              onChange={(event) => setGuided(event.target.checked)} />{' '}
+            Gravação guiada — destacar cada passo
+          </label>
           <RecordingButton
             isRecording={isRecording}
             isLoading={isLoading}
-            onClick={toggleRecording}
+            onClick={() => void toggleRecording(guided)}
             describedBy={RECORDING_PRIVACY_NOTICE_ID}
           />
         </RecordingCard>
+        <GuidedRecordingControls steps={steps} isRecording={isRecording} busy={isLoading}
+          onPauseChange={setGuidedPaused}
+          onStop={() => void toggleRecording(guided)} />
         <ReplayControls stepCount={steps.length} isRecording={isRecording} />
         <RecordedStepsList
           steps={steps}
-          isRecording={isRecording}
+          isRecording={isRecording && !guidedPaused}
           isLoading={areStepsLoading}
           pendingMutation={pendingMutation}
           feedback={stepsFeedback}

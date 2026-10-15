@@ -26,14 +26,14 @@ export function useRecordingState() {
     };
   }, []);
 
-  const toggleRecording = useCallback(async () => {
+  const toggleRecording = useCallback(async (guided = false) => {
     setError(undefined);
     setIsTransitioning(true);
 
     try {
       const nextState = isRecording
         ? await stopRecordingSession()
-        : await startRecordingSession();
+        : await startRecordingSession(guided);
       setIsRecording(nextState.isRecording);
     } catch (caughtError) {
       setError(

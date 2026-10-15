@@ -25,7 +25,7 @@ async function getActiveTab() {
   return { id: activeTab.tabId, url: activeTab.url };
 }
 
-export async function startRecordingSession(): Promise<RecordingState> {
+export async function startRecordingSession(guided = false): Promise<RecordingState> {
   const activeTab = await getActiveTab();
   const permissionPattern = getPermissionPattern(activeTab.url);
   const granted = await chrome.permissions.request({ origins: [permissionPattern] });
@@ -41,7 +41,7 @@ export async function startRecordingSession(): Promise<RecordingState> {
   }
   const message: ExtensionMessage = {
     type: 'START_RECORDING',
-    payload: { tabId: activeTab.id, origin, url: activeTab.url },
+    payload: { tabId: activeTab.id, origin, url: activeTab.url, ...(guided ? { guided: true } : {}) },
   };
   const response = (await chrome.runtime.sendMessage(message)) as ExtensionResponse;
 

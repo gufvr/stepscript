@@ -3,6 +3,7 @@ import styled from 'styled-components';
 interface StatusBannerProps {
   isRecording: boolean;
   isLoading: boolean;
+  isPaused?: boolean;
 }
 
 const Banner = styled.div<{ $isRecording: boolean }>`
@@ -20,8 +21,8 @@ const Banner = styled.div<{ $isRecording: boolean }>`
   font-weight: 600;
 `;
 
-export function StatusBanner({ isRecording, isLoading }: StatusBannerProps) {
-  const status = isLoading ? 'Carregando...' : isRecording ? 'Gravando' : 'Parado';
+export function StatusBanner({ isRecording, isLoading, isPaused = false }: StatusBannerProps) {
+  const status = isLoading ? 'Carregando...' : isRecording ? isPaused ? 'Pausado' : 'Gravando' : 'Parado';
 
   return (
     <Banner $isRecording={isRecording} role="status" aria-live="polite">

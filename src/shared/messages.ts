@@ -13,6 +13,8 @@ import type {
 } from './recordingTypes';
 import type { ReplayStatus, ReplayStepResult } from '../replay/replaySession';
 import type { AutomationExportPlan } from '../automation/automationExport';
+import type { GuidedRecordingStatus } from '../guided/guidedRecording';
+import type { GuidedHighlightRequest } from '../content/guidedHighlight';
 
 export interface LoginAutomationTarget {
   selector: string;
@@ -47,6 +49,11 @@ export interface SsoAutomationOption {
 }
 
 export type ExtensionMessage =
+  | { type: 'GET_GUIDED_RECORDING_STATUS' }
+  | { type: 'CONTROL_GUIDED_RECORDING'; payload: { action: 'pause' | 'resume' | 'review'; stepId?: string } }
+  | { type: 'SHOW_GUIDED_HIGHLIGHT'; payload: GuidedHighlightRequest }
+  | { type: 'CLEAR_GUIDED_HIGHLIGHT' }
+  | { type: 'GUIDED_TARGET_LOST' }
   | { type: 'INSPECT_LOGIN_AUTOMATION' }
   | { type: 'INSPECT_SSO_AUTOMATION' }
   | { type: 'START_SSO_AUTOMATION'; payload: { fingerprint: string; destination: string; documentId: string } }
@@ -58,7 +65,7 @@ export type ExtensionMessage =
   | { type: 'CANCEL_REPLAY' }
   | {
       type: 'START_RECORDING';
-      payload: { tabId: number; origin: string; url: string };
+      payload: { tabId: number; origin: string; url: string; guided?: boolean };
     }
   | { type: 'STOP_RECORDING' }
   | { type: 'ADD_CURRENT_URL_ASSERTION' }
@@ -132,6 +139,7 @@ export type ExtensionMessage =
 
 export interface ExtensionResponse {
   success: boolean;
+  guidedStatus?: GuidedRecordingStatus;
   error?: string;
   activeTabContext?: ActiveTabContext;
   pickerState?: ElementVisibilityPickerState;
