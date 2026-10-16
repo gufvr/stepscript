@@ -15,7 +15,7 @@ describe('visible StepScript branding', () => {
       name: 'StepScript',
       description:
         'Record browser flows and generate readable Playwright and Cypress tests locally.',
-      version: '0.5.1',
+      version: '0.6.0',
       minimum_chrome_version: '116',
       action: { default_title: 'Abrir StepScript' },
     });
